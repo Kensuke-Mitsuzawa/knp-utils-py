@@ -4,7 +4,7 @@ import uuid
 import argparse
 import json
 import os
-
+import six
 
 parser = argparse.ArgumentParser(description='Python-based KNP utils tool.')
 parser.add_argument('-i', '--path-input-json-path', required=True, help='Path into your input json file.')
@@ -46,4 +46,7 @@ result_obj = knp_job.main(
     is_normalize_text=args.is_normalize_text
 )
 
-print(json.dumps(result_obj.to_dict(), ensure_ascii=False))
+if six.PY2:
+    print(json.dumps(result_obj.to_dict(), ensure_ascii=True))
+else:
+    print(json.dumps(result_obj.to_dict(), ensure_ascii=False))
