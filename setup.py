@@ -2,17 +2,28 @@
 
 from setuptools import setup, find_packages
 
-version = '0.1'
+version = '0.11'
 name = 'knp-utils'
-short_description = ''
+short_description = 'Wrapper scripts for Japanese parser `KNP`'
 author = 'Kensuke Mitsuzawa'
 author_email = 'kensuke.mit@gmail.com'
-url = ''
+url = 'https://github.com/Kensuke-Mitsuzawa/knp-utils-py'
 license = 'MIT'
+classifiers = [
+        "Development Status :: 5 - Production/Stable",
+        "License :: OSI Approved :: MIT License",
+        "Programming Language :: Python",
+        "Natural Language :: Japanese",
+        "Topic :: Scientific/Engineering :: Artificial Intelligence",
+        "Programming Language :: Python :: 2.7",
+        "Programming Language :: Python :: 3.5"
+        ]
 
-
-with open('README.md') as f:
-    readme = f.read()
+try:
+    import pypandoc
+    long_description = pypandoc.convert('README.md', 'rst')
+except(IOError, ImportError):
+    long_description = open('README.md').read()
 
 
 install_requires = ['joblib', 'typing', 'six']
@@ -21,8 +32,8 @@ dependency_links = []
 setup(
     name=name,
     version=version,
-    description='',
-    long_description=readme,
+    description=short_description,
+    long_description=long_description,
     author=author,
     author_email=author_email,
     install_requires=install_requires,
@@ -30,5 +41,6 @@ setup(
     url=url,
     license=license,
     packages=find_packages(exclude='tests'),
+    classifiers=classifiers,
     test_suite='tests' #added
 )
