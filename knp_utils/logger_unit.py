@@ -1,3 +1,4 @@
+#! -*- coding: utf-8 -*-
 import sys
 import logging
 
@@ -9,7 +10,7 @@ custmoFormatter = logging.Formatter(
 handler = logging.StreamHandler(sys.stderr)
 handler.setFormatter(custmoFormatter)
 
-logger_name = 'fuman-violation-filter'
+logger_name = 'knp-utils'
 logger = logging.getLogger(logger_name)
 logger.setLevel(logging.INFO)
 logger.addHandler(handler)

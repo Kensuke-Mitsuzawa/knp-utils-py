@@ -1,3 +1,4 @@
+#! -*- coding: utf-8 -*-
 import subprocess
 import traceback
 import six
@@ -7,10 +8,15 @@ from typing import List, Dict, Any
 from knp_utils.logger_unit import logger
 from knp_utils.db_handler import DocumentObject
 
+if six.PY2:
+    ConnectionRefusedError = Exception
+
 
 class JumanppClient(object):
     """Class for receiving data as client"""
-    def __init__(self, hostname:str, port:int, timeout:int=50, option=None):
+    def __init__(self, hostname, port, timeout=50, option=None):
+        """"""
+        # type:(str,int,int,None)->None
         try:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.sock.connect((hostname, port))

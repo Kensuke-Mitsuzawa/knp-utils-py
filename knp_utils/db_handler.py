@@ -1,10 +1,12 @@
+#! -*- coding: utf-8 -*-
 from typing import List, Tuple, Dict, Union
+from knp_utils import logger_unit
 import os
-import logging
 import traceback
-from _datetime import datetime
+from datetime import datetime
 import sqlite3
-logger = logging.getLogger()
+import six
+logger = logger_unit.logger
 
 
 class DocumentObject(object):
@@ -19,13 +21,34 @@ class DocumentObject(object):
                  timestamp = datetime.now(),
                  updated_at = datetime.now()):
         # type: (int,str,bool,Union[None,str],str,datetime,datetime) -> None
+
+        if six.PY2:
+            if isinstance(text, str):
+                self.text = text.decode('utf-8')
+            else:
+                self.text = text
+
+            if isinstance(sub_id, str):
+                self.sub_id = sub_id.decode('utf-8')
+            else:
+                self.sub_id = sub_id
+
+            if isinstance(parsed_result, str):
+                self.parsed_result = parsed_result.decode('utf-8')
+            else:
+                self.parsed_result = parsed_result
+        else:
+            self.text = text
+            self.sub_id = sub_id
+            self.parsed_result = parsed_result
+
+
         self.record_id = record_id
         self.status = status
-        self.text = text
         self.timestamp = timestamp
         self.updated_at = updated_at
-        self.sub_id = sub_id
-        self.parsed_result = parsed_result
+
+
 
     def print_format(self):
         """* What you can do
@@ -78,9 +101,11 @@ class Sqlite3Handler(DbHandler):
         self.table_name_text = table_name_text
         if not os.path.exists(path_sqlite_file):
             self.db_connection = sqlite3.connect(database=path_sqlite_file)
+            self.db_connection.text_factory = str
             self.create_db()
         else:
             self.db_connection = sqlite3.connect(database=path_sqlite_file)
+            self.db_connection.text_factory = str
 
     def __del__(self):
         self.db_connection.close()
@@ -131,7 +156,7 @@ class Sqlite3Handler(DbHandler):
 
     def update_record(self, document_obj):
         # type: (DocumentObject)->bool
-        sql_update = "UPDATE {} SET status=?, parsed_result= ?  WHERE record_id = ?".format(self.table_name_text)
+        sql_update = u"UPDATE {} SET status=?, parsed_result= ?  WHERE record_id = ?".format(self.table_name_text)
         cur = self.db_connection.cursor()
         try:
             cur.execute(sql_update, (True, document_obj.parsed_result, document_obj.record_id,))

@@ -1,7 +1,9 @@
+#! -*- coding: utf-8 -*-
 from typing import List, Tuple, Dict, Any, Callable
 from knp_utils import models, db_handler
 import joblib
 import tempfile
+import six
 import uuid
 import os
 import re
@@ -11,7 +13,13 @@ import jaconv
 def func_normalize_text(text):
     """"""
     # type: (str)->str
-    return jaconv.h2z(text=re.sub(r'\s', '', string=text), kana=True, ascii=True, digit=True)
+    if six.PY2:
+        if isinstance(text, str):
+            text = text.decode('utf-8')
+        return jaconv.h2z(text=re.sub(r'\s', '', string=text), kana=True, ascii=True, digit=True)
+    else:
+        return jaconv.h2z(text=re.sub(r'\s', '', string=text), kana=True, ascii=True, digit=True)
+
 
 
 
@@ -126,7 +134,7 @@ def main(seq_input_dict_document,
     - is_delete_working_db
         - Boolean flag if you save working sqlite3 db file or Not
     """
-    # type: (List[Dict[str,Any]],models.Params,str,str,bool,bool,Callable[[str],str]) -> List[db_handler.DocumentObject]
+    # type: (List[Dict[str,Any]],models.Params,str,str,bool,bool,Callable[[str],str])->models.ResultObject
     path_working_db = os.path.join(work_dir, file_name)
     seq_doc_obj = generate_document_objects(seq_input_dict_document)
     initialize_text_db(seq_document_obj=seq_doc_obj, work_dir=work_dir, file_name=file_name)
