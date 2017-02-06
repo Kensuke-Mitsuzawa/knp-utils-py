@@ -116,6 +116,7 @@ def main(seq_input_dict_document,
          argument_params,
          work_dir=tempfile.mkdtemp(),
          file_name=str(uuid.uuid4()),
+         is_get_processed_doc=True,
          is_delete_working_db=True,
          is_normalize_text=False,
          func_normalization=func_normalize_text,):
@@ -133,15 +134,29 @@ def main(seq_input_dict_document,
         - file name of working sqlite3-db file
     - is_delete_working_db
         - Boolean flag if you save working sqlite3 db file or Not
+    - is_get_processed_doc
+        - Boolean flag if you get processed document or Not. KNP result string tends to be super big. So, if you put a lot of document, I strongly recomment to put is_get_processed_doc == False.
+         And use db_handler.Sqlite3Handler(path_sqlite_file=path_working_db).get_record(is_use_generator=True).
     """
-    # type: (List[Dict[str,Any]],models.Params,str,str,bool,bool,Callable[[str],str])->models.ResultObject
+    # type: (List[Dict[str,Any]],models.Params,str,str,bool,bool,bool,Callable[[str],str])->models.ResultObject
+    if is_delete_working_db and is_get_processed_doc == False:
+        raise Exception('Nothing is return object when is_delete_working_db = True and is_get_processed_doc = False')
+
+
     path_working_db = os.path.join(work_dir, file_name)
     seq_doc_obj = generate_document_objects(seq_input_dict_document)
     initialize_text_db(seq_document_obj=seq_doc_obj, work_dir=work_dir, file_name=file_name)
     parse_texts(argument_params, path_working_db, is_normalize_text=is_normalize_text, func_normalization=func_normalization)
 
-    seq_processed_doc_obj = db_handler.Sqlite3Handler(path_sqlite_file=path_working_db).get_record()
-    if is_delete_working_db:
-        return models.ResultObject(seq_processed_doc_obj, path_working_db=None)
+    if is_get_processed_doc:
+        seq_processed_doc_obj = db_handler.Sqlite3Handler(path_sqlite_file=path_working_db).get_record()
     else:
-        return models.ResultObject(seq_processed_doc_obj, path_working_db=path_working_db)
+        seq_processed_doc_obj = []
+
+    if is_delete_working_db:
+        if os.path.exists(path_working_db): os.remove(path_working_db)
+        return models.ResultObject(seq_processed_doc_obj, path_working_db=None, db_handler=None)
+    else:
+        return models.ResultObject(seq_processed_doc_obj,
+                                   path_working_db=path_working_db,
+                                   db_handler=db_handler.Sqlite3Handler(path_sqlite_file=path_working_db))

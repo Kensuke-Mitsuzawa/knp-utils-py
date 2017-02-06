@@ -21,7 +21,10 @@ else:
         {"text-id": "input-3", "text": "ドナルド・トランプ米大統領が有権者の心をつかんだ理由の一つは、その率直な物言いだ。ドルに関して言えば、米国の歴代財務長官が昔から繰り返してきた「強いドルは米国の国益にかなう」という妄言と決別するという新政権の意向は歓迎されよう。"},
     ]
 
-result_obj = knp_job.main(seq_input_dict_document=input_document, argument_params=argument_param, is_normalize_text=True)
+result_obj = knp_job.main(seq_input_dict_document=input_document,
+                          argument_params=argument_param,
+                          is_normalize_text=True,
+                          is_get_processed_doc=True)
 
 import json
 print(json.dumps(result_obj.to_dict(), ensure_ascii=False))
