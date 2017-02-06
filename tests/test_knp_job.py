@@ -46,7 +46,7 @@ class TestCore(unittest.TestCase):
         """"""
         self.test_initialize_text_db()
         handler = db_handler.Sqlite3Handler(os.path.join(self.path_work_dir, self.db_file_name))
-        knp_job.parse_one_text(record_id=1,
+        knp_job.parse_one_text(record_id=4,
                                path_sqlite3_db_handler=os.path.join(self.path_work_dir, self.db_file_name),
                                argument_params=self.param_argument)
 

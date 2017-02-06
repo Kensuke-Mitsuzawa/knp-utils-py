@@ -4,6 +4,7 @@ import uuid
 import argparse
 import json
 import os
+import codecs
 import six
 
 parser = argparse.ArgumentParser(description='Python-based KNP utils tool.')
@@ -34,8 +35,13 @@ arugment_params = models.Params(
 if not os.path.exists(args.path_input_json_path):
     raise Exception('There is no file at {}'.format(args.path_input_json_path))
 else:
-    with open(args.path_input_json_path, 'r') as f:
-        seq_input_dict_document = json.loads(f.read())
+    if six.PY2:
+        with codecs.open(args.path_input_json_path, 'r', 'utf-8') as f:
+            seq_input_dict_document = json.loads(f.read())
+    else:
+        with open(args.path_input_json_path, 'r') as f:
+            seq_input_dict_document = json.loads(f.read())
+
 
 result_obj = knp_job.main(
     seq_input_dict_document=seq_input_dict_document,

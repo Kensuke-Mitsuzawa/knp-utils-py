@@ -1,5 +1,5 @@
 #! -*- coding: utf-8 -*-
-from typing import List, Tuple, Dict, Union
+from typing import List, Tuple, Dict, Union, Iterable
 from knp_utils import logger_unit
 import os
 import traceback
@@ -77,28 +77,38 @@ class DocumentObject(object):
 
 class DbHandler(object):
     def insert_record(self, document_obj):
+        """"""
         # type: (DocumentObject)->bool
         raise NotImplementedError()
 
-    def get_record(self):
-        # type: () -> List[DocumentObject]
+    def get_record(self, is_use_generator):
+        """"""
+        # type: (bool)->List[DocumentObject]
         raise NotImplementedError()
 
     def get_seq_ids_not_processed(self):
-        # type: () -> List[str]
+        """"""
+        # type: ()->List[str]
         raise NotImplementedError()
 
     def update_record(self, document_obj):
-        # type: (DocumentObject) -> bool
+        """"""
+        # type: (DocumentObject)->bool
         raise NotImplementedError()
 
 
 class Sqlite3Handler(DbHandler):
     def __init__(self,
                  path_sqlite_file,
-                 table_name_text="text"):
-        # type: (str, str)->None
+                 table_name_text="text",
+                 is_close_connection_end=True):
+        """* Args
+        - is_close_connection_end
+            - If True, it deleted DB when a process is done. False; don't.
+        """
+        # type: (str,str,bool)->None
         self.table_name_text = table_name_text
+        self.is_close_connection_end = is_close_connection_end
         if not os.path.exists(path_sqlite_file):
             self.db_connection = sqlite3.connect(database=path_sqlite_file)
             self.db_connection.text_factory = str
@@ -108,7 +118,8 @@ class Sqlite3Handler(DbHandler):
             self.db_connection.text_factory = str
 
     def __del__(self):
-        self.db_connection.close()
+        if self.is_close_connection_end:
+            self.db_connection.close()
 
     def create_db(self):
         # type: () -> None
@@ -186,23 +197,61 @@ class Sqlite3Handler(DbHandler):
                 timestamp=fetched_record[5],
                 updated_at=fetched_record[6])
 
-    def get_record(self):
-        # type: () -> List[DocumentObject]
+    def get_one_record_sub_id(self, sub_id):
+        """"""
+        # type: (int)->DocumentObject
+        sql_ = "SELECT record_id, text, parsed_result, status, sub_id, created_at, updated_at FROM {} WHERE sub_id = ?".format(
+            self.table_name_text)
+
+        cur = self.db_connection.cursor()
+        cur.execute(sql_, (sub_id,))
+        fetched_record = cur.fetchone()
+        if fetched_record is None:
+            return None
+        else:
+            return DocumentObject(
+                record_id=fetched_record[0],
+                text=fetched_record[1],
+                parsed_result=fetched_record[2],
+                status=fetched_record[3],
+                sub_id=fetched_record[4],
+                timestamp=fetched_record[5],
+                updated_at=fetched_record[6])
+
+    def get_record(self, is_use_generator=False):
+        """"""
+        # type: (bool)->Union[Iterable[DocumentObject]], List[DocumentObject]
         sql_ = "SELECT record_id, text, parsed_result, status, sub_id, created_at, updated_at FROM {}".format(self.table_name_text)
 
         cur = self.db_connection.cursor()
         cur.execute(sql_)
 
-        seq_urls = [
-            DocumentObject(
-                record_id=record_tuple[0],
-                text=record_tuple[1],
-                parsed_result=record_tuple[2],
-                status=record_tuple[3],
-                sub_id=record_tuple[4],
-                timestamp=record_tuple[5],
-                updated_at=record_tuple[6]
-            ) for record_tuple in cur]
+        if six.PY3 and is_use_generator:
+            seq_urls = (
+                DocumentObject(
+                    record_id=record_tuple[0],
+                    text=record_tuple[1],
+                    parsed_result=record_tuple[2],
+                    status=record_tuple[3],
+                    sub_id=record_tuple[4],
+                    timestamp=record_tuple[5],
+                    updated_at=record_tuple[6]
+                ) for record_tuple in cur)
+        else:
+            if six.PY2:
+                logger.warning('is_use_generator is invalid in Python2')
+
+            seq_urls = [
+                DocumentObject(
+                    record_id=record_tuple[0],
+                    text=record_tuple[1],
+                    parsed_result=record_tuple[2],
+                    status=record_tuple[3],
+                    sub_id=record_tuple[4],
+                    timestamp=record_tuple[5],
+                    updated_at=record_tuple[6]
+                ) for record_tuple in cur]
+
         return seq_urls
 
     def get_seq_ids_not_processed(self):

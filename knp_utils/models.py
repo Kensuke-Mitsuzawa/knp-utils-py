@@ -6,7 +6,7 @@ import socket
 import re
 from typing import List, Dict, Any
 from knp_utils.logger_unit import logger
-from knp_utils.db_handler import DocumentObject
+from knp_utils.db_handler import DocumentObject, Sqlite3Handler
 
 if six.PY2:
     ConnectionRefusedError = Exception
@@ -139,11 +139,13 @@ class Params(object):
 class ResultObject(object):
     def __init__(self,
                  seq_document_obj,
-                 path_working_db):
+                 path_working_db,
+                 db_handler):
         """"""
-        # type: (List[DocumentObject],str)->None
+        # type: (List[DocumentObject],str,Sqlite3Handler)->None
         self.seq_document_obj = seq_document_obj
         self.path_working_db = path_working_db
+        self.db_handler = db_handler
 
     def to_dict(self):
         """* What you can do
