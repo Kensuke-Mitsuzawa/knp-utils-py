@@ -15,7 +15,7 @@ parser.add_argument('--path-juman-rc', required=False, default=None, help='Path 
 parser.add_argument('--n-jobs', required=False, default=8, type=int, help='#Thread to run')
 parser.add_argument('--working-dir', required=False, default=tempfile.mkdtemp())
 parser.add_argument('--file-name', required=False, default=str(uuid.uuid4()))
-parser.add_argument('--is-delete-working-db', required=False, default=True, type=bool)
+parser.add_argument('--is-delete-working-db', required=False, default=True, action='store_true')
 parser.add_argument('--is-normalize-text', required=False, action='store_true', default=False)
 """
 # sever mode is invalid now
