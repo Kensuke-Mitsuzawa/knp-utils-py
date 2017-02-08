@@ -29,7 +29,6 @@ result_obj = knp_job.main(seq_input_dict_document=input_document,
 import json
 print(json.dumps(result_obj.to_dict(), ensure_ascii=False))
 
-
 ### With pyknp
 try:
     import pyknp

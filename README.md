@@ -12,13 +12,13 @@ Please visit [Github page](https://github.com/Kensuke-Mitsuzawa/knp-utils-py) al
 - Commandline interface
 
 At my environment(MacBook Pro Early2015)
-Each way takes following time for processing 24 input-documents.
+Each way takes following time for processing 100 input-documents.
 
 ```
-[knp-utils] elapsed_time:14.52339506149292 [Sec]
-[Native KNP subprocess] elapsed_time:23.880084991455078 [Sec]
-[Native KNP server] elapsed_time:22.08908200263977 [Sec]
-[Pyknp] elapsed_time:36.08908200263977 [Sec]
+[knp-utils] elapsed_time:53.66389608383179 [Sec]
+[Native KNP subprocess] elapsed_time:91.62633109092712 [Sec]
+[Native KNP server] elapsed_time:88.35711193084717 [Sec]
+[Pyknp] elapsed_time:150.08908200263977 [Sec]
 ```
 
 # Requirement

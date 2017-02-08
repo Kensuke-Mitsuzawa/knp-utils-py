@@ -12,7 +12,6 @@ from pyknp import KNP
 import subprocess
 
 
-
 ### Speed-Performance ###
 input_document = [
     {"text-id": "input-1",
@@ -64,9 +63,12 @@ input_document = [
      "text": "ドナルド・トランプ米大統領が有権者の心をつかんだ理由の一つは、その率直な物言いだ。ドルに関して言えば、米国の歴代財務長官が昔から繰り返してきた「強いドルは米国の国益にかなう」という妄言と決別するという新政権の意向は歓迎されよう。"},
 ]
 
+seq_long_input = input_document * 4
+
 argument_param = models.Params(
     knp_command='/usr/local/bin/knp',
-    juman_command='/usr/local/bin/juman'
+    juman_command='/usr/local/bin/juman',
+    n_jobs=-1
 )
 knp_obj = pyknp.KNP(command='/usr/local/bin/knp', jumancommand='/usr/local/bin/juman')
 
@@ -74,12 +76,15 @@ knp_obj = pyknp.KNP(command='/usr/local/bin/knp', jumancommand='/usr/local/bin/j
 import time
 
 start = time.time()
-result_obj = knp_job.main(seq_input_dict_document=input_document, argument_params=argument_param, is_normalize_text=True)
+result_obj = knp_job.main(seq_input_dict_document=seq_long_input,
+                          argument_params=argument_param,
+                          is_normalize_text=True,
+                          is_delete_working_db=True)
 elapsed_time = time.time() - start
 print ("[knp-utils] elapsed_time:{0} [Sec]".format(elapsed_time))
 
 start = time.time()
-for text_obj in input_document:
+for text_obj in seq_long_input:
     echo_ps = subprocess.Popen(['echo', text_obj['text']], stdout=subprocess.PIPE)
     echo_ps.wait()
     juman_ps = subprocess.Popen(['/usr/local/bin/juman'], stdout=subprocess.PIPE, stdin=echo_ps.stdout)
@@ -90,7 +95,7 @@ elapsed_time = time.time() - start
 print ("[Native KNP subprocess] elapsed_time:{0} [Sec]".format(elapsed_time))
 
 start = time.time()
-for text_obj in input_document:
+for text_obj in seq_long_input:
     echo_ps = subprocess.Popen(['echo', text_obj['text']], stdout=subprocess.PIPE)
     juman_ps = subprocess.Popen(['/usr/local/bin/juman', '-C', 'localhost'], stdout=subprocess.PIPE, stdin=echo_ps.stdout)
     juman_ps.wait()
@@ -100,7 +105,7 @@ print ("[Native KNP server] elapsed_time:{0} [Sec]".format(elapsed_time))
 
 
 start = time.time()
-for text_obj in input_document:
+for text_obj in seq_long_input:
     knp_obj.parse(sentence=text_obj['text'])
 elapsed_time = time.time() - start
 print ("[pyknp] elapsed_time:{0} [Sec]".format(elapsed_time))
