@@ -17,6 +17,9 @@ class JumanppClient(object):
     def __init__(self, hostname, port, timeout=50, option=None):
         """"""
         # type:(str,int,int,None)->None
+        if isinstance(port, str):
+            port = int(port)
+
         try:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.sock.connect((hostname, port))
