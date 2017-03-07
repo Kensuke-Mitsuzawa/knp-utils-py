@@ -20,6 +20,7 @@ RUN apt-get install -y gcc --fix-missing
 RUN apt-get install -y g++ --fix-missing
 RUN apt-get install -y gcc-4.9 g++-4.9
 RUN apt-get install -y swig2.0 --fix-missing
+RUN apt-get install -y zlib1g-dev
 ### DB郡のインストール
 RUN apt-get install -y sqlite3
 RUN apt-get install -y vim wget lsof curl
@@ -97,5 +98,5 @@ RUN mkdir /var/run/redis
 
 EXPOSE 6379
 EXPOSE 5000
-WORKDIR /codes/DocumentFeatureSelection
-CMD ["/bin/bash", "start_web_service.sh"]
+WORKDIR /codes/knp-utils 
+CMD ["/bin/bash", "start_web_server.sh"]
