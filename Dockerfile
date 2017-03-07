@@ -98,5 +98,5 @@ RUN mkdir /var/run/redis
 
 EXPOSE 6379
 EXPOSE 5000
-WORKDIR /codes/DocumentFeatureSelection
-CMD ["/bin/bash", "start_web_service.sh"]
+WORKDIR /codes/knp-utils 
+CMD ["/bin/bash", "start_web_server.sh"]
