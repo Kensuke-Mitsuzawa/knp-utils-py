@@ -1,5 +1,5 @@
 #! -*- coding: utf-8 -*-
-from typing import List, Tuple, Dict, Union, Iterable
+from typing import List, Tuple, Dict, Union, Iterable, Any
 from knp_utils import logger_unit
 import os
 import traceback
@@ -11,6 +11,7 @@ logger = logger_unit.logger
 
 TIME_SLEEP = 1
 N_RETRY = 10
+
 
 class DocumentObject(object):
     __slots__ = ('record_id', 'status', 'text',
@@ -217,7 +218,7 @@ class Sqlite3Handler(DbHandler):
     def get_one_record(self, record_id):
         """"""
         # type: (int)->Union[bool,DocumentObject]
-        sql_ = "SELECT record_id, text, parsed_result, status, sub_id, created_at, updated_at FROM {} WHERE record_id = ?".format(self.table_name_text)
+        sql_ = "SELECT record_id, text, parsed_result, status, is_success, sub_id, created_at, updated_at FROM {} WHERE record_id = ?".format(self.table_name_text)
 
         is_success = False
         i = 0
@@ -234,6 +235,7 @@ class Sqlite3Handler(DbHandler):
                 i += 1
             else:
                 is_success = True
+                cur.close()
                 break
             if i == N_RETRY:
                 self.db_connection.rollback()
@@ -255,9 +257,27 @@ class Sqlite3Handler(DbHandler):
         sql_ = """SELECT record_id, text, parsed_result, status, is_success, sub_id, created_at, updated_at
         FROM {} WHERE sub_id = ?""".format(self.table_name_text)
 
-        cur = self.db_connection.cursor()
-        cur.execute(sql_, (sub_id,))
-        fetched_record = cur.fetchone()
+        is_success = False
+        i = 0
+        while is_success == False:
+            try:
+                cur = self.db_connection.cursor()
+                cur.execute(sql_, (sub_id,))
+                fetched_record = cur.fetchone()
+            except:
+                logger.error(traceback.format_exc())
+                self.db_connection.rollback()
+                logger.info(msg='It waits {} sec. to avoid a conflict.'.format(TIME_SLEEP))
+                time.sleep(TIME_SLEEP)
+                i += 1
+            else:
+                is_success = True
+                cur.close()
+                break
+            if i == N_RETRY:
+                self.db_connection.rollback()
+                return False
+
         if fetched_record is None:
             return None
         else:
