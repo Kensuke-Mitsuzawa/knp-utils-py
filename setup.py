@@ -2,7 +2,7 @@
 
 from setuptools import setup, find_packages
 
-version = '0.13'
+version = '0.14'
 name = 'knp-utils'
 short_description = 'Wrapper scripts for Japanese parser `KNP`'
 author = 'Kensuke Mitsuzawa'

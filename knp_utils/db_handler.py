@@ -6,8 +6,11 @@ import traceback
 from datetime import datetime
 import sqlite3
 import six
+import time
 logger = logger_unit.logger
 
+TIME_SLEEP = 1
+N_RETRY = 10
 
 class DocumentObject(object):
     __slots__ = ('record_id', 'status', 'text', 'timestamp', 'updated_at', 'sub_id', 'parsed_result')
@@ -122,6 +125,7 @@ class Sqlite3Handler(DbHandler):
             self.db_connection.close()
 
     def create_db(self):
+        """"""
         # type: () -> None
         cur = self.db_connection.cursor()
         sql = """create table if not exists {table_name} (
@@ -136,10 +140,10 @@ class Sqlite3Handler(DbHandler):
         self.db_connection.commit()
 
     def insert_record(self, document_obj):
-        # type: (DocumentObject) -> bool
         """* What you can do
         - You initialize record for input
         """
+        # type: (DocumentObject) -> bool
         sql_check = "SELECT count(record_id) FROM {} WHERE record_id = ?".format(self.table_name_text)
         cur = self.db_connection.cursor()
         cur.execute(sql_check, (document_obj.record_id,))
@@ -168,25 +172,53 @@ class Sqlite3Handler(DbHandler):
     def update_record(self, document_obj):
         # type: (DocumentObject)->bool
         sql_update = u"UPDATE {} SET status=?, parsed_result= ?  WHERE record_id = ?".format(self.table_name_text)
-        cur = self.db_connection.cursor()
-        try:
-            cur.execute(sql_update, (True, document_obj.parsed_result, document_obj.record_id,))
-            self.db_connection.commit()
-            cur.close()
-        except:
-            logger.error(traceback.format_exc())
-            self.db_connection.rollback()
-            return False
+        is_success = False
+        i = 0
+        while is_success == False:
+            try:
+                cur = self.db_connection.cursor()
+                cur.execute(sql_update, (True, document_obj.parsed_result, document_obj.record_id,))
+                self.db_connection.commit()
+                cur.close()
+            except:
+                logger.error(traceback.format_exc())
+                self.db_connection.rollback()
+                logger.info(msg='It waits {} sec. to avoid a conflict.'.format(TIME_SLEEP))
+                time.sleep(TIME_SLEEP)
+                i += 1
+            else:
+                is_success = True
+                break
+            if i == N_RETRY:
+                self.db_connection.rollback()
+                return False
 
         return True
 
     def get_one_record(self, record_id):
-        # type: (int)->DocumentObject
+        """"""
+        # type: (int)->Union[bool,DocumentObject]
         sql_ = "SELECT record_id, text, parsed_result, status, sub_id, created_at, updated_at FROM {} WHERE record_id = ?".format(self.table_name_text)
 
-        cur = self.db_connection.cursor()
-        cur.execute(sql_, (record_id, ))
-        fetched_record = cur.fetchone()
+        is_success = False
+        i = 0
+        while is_success == False:
+            try:
+                cur = self.db_connection.cursor()
+                cur.execute(sql_, (record_id, ))
+                fetched_record = cur.fetchone()
+            except:
+                logger.error(traceback.format_exc())
+                self.db_connection.rollback()
+                logger.info(msg='It waits {} sec. to avoid a conflict.'.format(TIME_SLEEP))
+                time.sleep(TIME_SLEEP)
+                i += 1
+            else:
+                is_success = True
+                break
+            if i == N_RETRY:
+                self.db_connection.rollback()
+                return False
 
         return DocumentObject(
                 record_id=fetched_record[0],

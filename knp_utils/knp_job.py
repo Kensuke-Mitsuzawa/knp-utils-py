@@ -35,6 +35,9 @@ def parse_one_text(record_id,
 
     process_db_handler = db_handler.Sqlite3Handler(path_sqlite3_db_handler)
     document_obj = process_db_handler.get_one_record(record_id)
+    if isinstance(document_obj, bool) and document_obj == False:
+        return False
+
     if is_normalize_text:
         text = func_normalization(document_obj.text)
     else:
