@@ -21,8 +21,6 @@ def func_normalize_text(text):
         return jaconv.h2z(text=re.sub(r'\s', '', string=text), kana=True, ascii=True, digit=True)
 
 
-
-
 def parse_one_text(record_id,
                    path_sqlite3_db_handler,
                    argument_params,
@@ -44,7 +42,7 @@ def parse_one_text(record_id,
         text = document_obj.text
 
     parsed_result = argument_params.run_command(text=text)
-    document_obj.parsed_result = parsed_result
+    document_obj.set_knp_parsed_result(parsed_result=parsed_result)
     process_db_handler.update_record(document_obj)
     del process_db_handler
 

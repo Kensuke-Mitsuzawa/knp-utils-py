@@ -10,9 +10,15 @@ class TestCore(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # procedures before tests are started. This code block is executed only once
-        cls.path_work_dir = './resources'
+
         cls.db_file_name = 'model_database.sqlite3'
-        cls.path_input_documents = './resources/input_sample.json'
+        if os.path.dirname(__file__) == 'tests':
+            cls.path_input_documents = './resources/input_sample.json'
+            cls.path_work_dir = './resources'
+        else:
+            cls.path_input_documents = 'tests/resources/input_sample.json'
+            cls.path_work_dir = 'tests/resources'
+
         with open(cls.path_input_documents, 'r') as f:
             cls.seq_docs = json.loads(f.read())
 
@@ -54,6 +60,45 @@ class TestCore(unittest.TestCase):
         self.test_initialize_text_db()
         knp_job.parse_texts(path_sqlite3_db_handler=os.path.join(self.path_work_dir, self.db_file_name),
                             argument_params=self.param_argument)
+
+    def test_stress_test_pattern1(self):
+        """大量の入力文を与えた場合の挙動をチェックする
+        ### with normalization is True
+        """
+        seq_long_test_input = self.seq_docs * 20
+
+        result_obj = knp_job.main(
+            seq_input_dict_document=seq_long_test_input,
+            argument_params=self.param_argument,
+            is_normalize_text=True)
+        self.assertTrue(len(result_obj.seq_document_obj) == len(seq_long_test_input))
+
+    def test_stress_test_pattern2(self):
+        """大量の入力文を与えた場合の挙動をチェックする
+        ### with normalization is True
+        """
+        seq_long_test_input = self.seq_docs * 20
+
+        result_obj = knp_job.main(
+            seq_input_dict_document=seq_long_test_input,
+            argument_params=self.param_argument,
+            is_normalize_text=False)
+        self.assertTrue(len(result_obj.seq_document_obj) == len(seq_long_test_input))
+
+    def test_exception_during_sentence(self):
+        """KNPの解析結果文字列が例外を起こすときの処理"""
+        seq_input = [
+            {'text-id': 'test-1', 'text': 'ベッキー♪#も、なんかもう世代交代じゃね？'},
+            {'text-id': 'test-2', 'text': 'ベッキー♪#も、なんかもう世代交代じゃね？'},
+            {'text-id': 'test-3', 'text': 'ベッキー♪#も、なんかもう世代交代じゃね？'}
+        ]
+
+        result_obj = knp_job.main(
+            seq_input_dict_document=seq_input,
+            argument_params=self.param_argument,
+            is_normalize_text=False,
+            is_delete_working_db=True
+        )
 
 
 if __name__ == '__main__':

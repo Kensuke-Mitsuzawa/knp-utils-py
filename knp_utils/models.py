@@ -37,7 +37,7 @@ class JumanppClient(object):
             self.sock.close()
 
     def query(self, sentence, pattern):
-        # type: (, str, bytes) -> str
+        # type: (str, bytes) -> str
         assert (isinstance(sentence, six.text_type))
         self.sock.sendall(b"%s\n" % sentence.encode('utf-8').strip())
         data = self.sock.recv(1024)
@@ -49,7 +49,7 @@ class JumanppClient(object):
         return recv.strip().decode('utf-8')
 
 
-class Params(object):
+class KnpSubProcess(object):
     def __init__(self,
                  knp_command,
                  juman_command,
@@ -129,14 +129,28 @@ class Params(object):
             juman_ps = subprocess.Popen(juman_run_command, stdin=echo_ps.stdout, stdout=subprocess.PIPE)
             juman_ps.wait()
             parsed_result = subprocess.check_output(knp_run_command, stdin=juman_ps.stdout)
+
             if six.PY2:
                 return parsed_result
             else:
                 return parsed_result.decode('utf-8')
 
         except subprocess.CalledProcessError:
+            traceback_message = traceback.format_exc()
             logger.error("Error with command={}".format(traceback.format_exc()))
-            return None
+            return 'error with CalledProcessError. traceback={}'.format(traceback_message)
+        except UnicodeDecodeError:
+            traceback_message = traceback.format_exc()
+            logger.error("Error with command={}".format(traceback.format_exc()))
+            return 'error with UnicodeDecodeError traceback={}'.format(traceback_message)
+        except Exception:
+            traceback_message = traceback.format_exc()
+            logger.error("Error with command={}".format(traceback.format_exc()))
+            return 'error traceback={}'.format(traceback_message)
+
+
+## For keeping old version
+Params = KnpSubProcess
 
 
 class ResultObject(object):
