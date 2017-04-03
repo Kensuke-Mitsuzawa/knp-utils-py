@@ -10,7 +10,7 @@ import time
 logger = logger_unit.logger
 
 TIME_SLEEP = 1
-N_RETRY = 10
+N_RETRY = 60
 
 
 class DocumentObject(object):
@@ -68,7 +68,9 @@ class DocumentObject(object):
         - It checks if knp result is error or not
         """
         # type: (str)->bool
-        if 'error' in parsed_result.lower():
+        if parsed_result is None:
+            return False
+        elif 'error' in parsed_result.lower():
             return False
         else:
             return True
@@ -208,6 +210,7 @@ class Sqlite3Handler(DbHandler):
                 i += 1
             else:
                 is_success = True
+                logger.error(msg='We wait {} times to avoid conflict, however it does NOT resolve. We record it as error.'.format(N_RETRY))
                 break
             if i == N_RETRY:
                 self.db_connection.rollback()
@@ -236,6 +239,7 @@ class Sqlite3Handler(DbHandler):
             else:
                 is_success = True
                 cur.close()
+                logger.error(msg='We wait {} times to avoid conflict, however it does NOT resolve. We record it as error.'.format(N_RETRY))
                 break
             if i == N_RETRY:
                 self.db_connection.rollback()
