@@ -7,9 +7,10 @@ from datetime import datetime
 import sqlite3
 import six
 import time
+import random
 logger = logger_unit.logger
 
-TIME_SLEEP = 2
+TIME_SLEEP = random.randint(2, 10)
 N_RETRY = 60
 
 
