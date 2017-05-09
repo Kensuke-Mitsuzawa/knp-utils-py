@@ -9,7 +9,7 @@ import six
 import time
 logger = logger_unit.logger
 
-TIME_SLEEP = 1
+TIME_SLEEP = 2
 N_RETRY = 60
 
 
@@ -118,21 +118,30 @@ class Sqlite3Handler(DbHandler):
     def __init__(self,
                  path_sqlite_file,
                  table_name_text="text",
-                 is_close_connection_end=True):
-        """* Args
+                 is_close_connection_end=True,
+                 sleep_time=TIME_SLEEP,
+                 n_retry=N_RETRY,
+                 connection_timeout=30000):
+        """* Parameters
         - is_close_connection_end
             - If True, it deleted DB when a process is done. False; don't.
+        - sleep_time: time(seconds) to wait when it has database lock error from sqlite3
+        - n_retry: times to try and wait for database lock from sqlite3
+        - connection_timeout: timeout time until a connection will be closed. 
         """
-        # type: (str,str,bool)->None
+        # type: (str,str,bool,int,int)->None
         self.table_name_text = table_name_text
         self.is_close_connection_end = is_close_connection_end
         self.path_sqlite_file = path_sqlite_file
+        self.sleep_time = sleep_time
+        self.n_retry = n_retry
+        self.connection_timeout = connection_timeout
         if not os.path.exists(self.path_sqlite_file):
-            self.db_connection = sqlite3.connect(database=self.path_sqlite_file)
+            self.db_connection = sqlite3.connect(database=self.path_sqlite_file, isolation_level=None, timeout=self.connection_timeout)
             self.db_connection.text_factory = str
             self.create_db()
         else:
-            self.db_connection = sqlite3.connect(database=self.path_sqlite_file)
+            self.db_connection = sqlite3.connect(database=self.path_sqlite_file, isolation_level=None, timeout=self.connection_timeout)
             self.db_connection.text_factory = str
 
     def __del__(self):
@@ -205,15 +214,15 @@ class Sqlite3Handler(DbHandler):
             except:
                 logger.error(traceback.format_exc())
                 self.db_connection.rollback()
-                logger.info(msg='It waits {} sec. to avoid a conflict.'.format(TIME_SLEEP))
-                time.sleep(TIME_SLEEP)
+                logger.info(msg='It waits {} sec. to avoid a conflict.'.format(self.sleep_time))
+                time.sleep(self.sleep_time)
                 i += 1
             else:
                 is_success = True
                 break
-            if i == N_RETRY:
+            if i == self.n_retry:
                 self.db_connection.rollback()
-                logger.error(msg='We wait {} times to avoid conflict, however it does NOT resolve. We record it as error.'.format(N_RETRY))
+                logger.error(msg='We wait {} times to avoid conflict, however it does NOT resolve. We record it as error.'.format(self.n_retry))
                 return False
 
         return True
@@ -233,16 +242,16 @@ class Sqlite3Handler(DbHandler):
             except:
                 logger.error(traceback.format_exc())
                 self.db_connection.rollback()
-                logger.info(msg='It waits {} sec. to avoid a conflict.'.format(TIME_SLEEP))
-                time.sleep(TIME_SLEEP)
+                logger.info(msg='It waits {} sec. to avoid a conflict.'.format(self.sleep_time))
+                time.sleep(self.sleep_time)
                 i += 1
             else:
                 is_success = True
                 cur.close()
                 break
-            if i == N_RETRY:
+            if i == self.n_retry:
                 self.db_connection.rollback()
-                logger.error(msg='We wait {} times to avoid conflict, however it does NOT resolve. We record it as error.'.format(N_RETRY))
+                logger.error(msg='We wait {} times to avoid conflict, however it does NOT resolve. We record it as error.'.format(self.n_retry))
                 return False
 
         return DocumentObject(
@@ -271,14 +280,14 @@ class Sqlite3Handler(DbHandler):
             except:
                 logger.error(traceback.format_exc())
                 self.db_connection.rollback()
-                logger.info(msg='It waits {} sec. to avoid a conflict.'.format(TIME_SLEEP))
-                time.sleep(TIME_SLEEP)
+                logger.info(msg='It waits {} sec. to avoid a conflict.'.format(self.sleep_time))
+                time.sleep(self.sleep_time)
                 i += 1
             else:
                 is_success = True
                 cur.close()
                 break
-            if i == N_RETRY:
+            if i == self.n_retry:
                 self.db_connection.rollback()
                 return False
 
