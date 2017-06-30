@@ -1,6 +1,9 @@
 #! -*- coding: utf-8 -*-
-from typing import List, Tuple, Dict, Any, Callable
+# package module
 from knp_utils import models, db_handler
+from knp_utils.models import KnpSubProcess
+# else
+from typing import List, Tuple, Dict, Any, Callable
 import joblib
 import tempfile
 import six
@@ -11,7 +14,9 @@ import jaconv
 
 
 def func_normalize_text(text):
-    """"""
+    """* What you can do
+    - It make normalize input text into text which is suitable to KNP analysis.
+    """
     # type: (str)->str
     if six.PY2:
         if isinstance(text, str):
@@ -29,7 +34,7 @@ def parse_one_text(record_id,
     """* What you can do
     - It parses one input-document.
     """
-    # type: (int,db_handler.Sqlite3Handler,models.Params,bool,Callable[[str],str])->bool
+    # type: (int,db_handler.Sqlite3Handler,KnpSubProcess,bool,Callable[[str],str])->bool
 
     process_db_handler = db_handler.Sqlite3Handler(path_sqlite3_db_handler)
     document_obj = process_db_handler.get_one_record(record_id)
@@ -51,20 +56,33 @@ def parse_one_text(record_id,
 
 def parse_texts(argument_params,
                 path_sqlite3_db_handler,
+                n_jobs,
                 is_normalize_text=False,
                 func_normalization=func_normalize_text):
     """* What you can do
     - It takes many documents and parse them
     """
-    # type: (models.Params,str,bool,Callable[[str],str])->bool
+    # type: (KnpSubProcess,str,int,bool,Callable[[str],str])->bool
     seq_ids_to_process = db_handler.Sqlite3Handler(path_sqlite3_db_handler).get_seq_ids_not_processed()
-    joblib.Parallel(n_jobs=argument_params.n_jobs, backend='threading')(joblib.delayed(parse_one_text)(
+    # Run KNP process in parallel #
+    for record_id in seq_ids_to_process:
+        parse_one_text(
+            record_id=record_id,
+            path_sqlite3_db_handler=path_sqlite3_db_handler,
+            argument_params=argument_params,
+            is_normalize_text=is_normalize_text,
+            func_normalization=func_normalization
+        )
+
+    # todo
+    #joblib.Parallel(n_jobs=n_jobs, backend='threading')(joblib.delayed(parse_one_text)(
+    '''joblib.Parallel(n_jobs=n_jobs)(joblib.delayed(parse_one_text)(
         record_id=record_id,
         path_sqlite3_db_handler=path_sqlite3_db_handler,
         argument_params=argument_params,
         is_normalize_text=is_normalize_text,
         func_normalization=func_normalization
-    ) for record_id in seq_ids_to_process)
+    ) for record_id in seq_ids_to_process)'''
 
     return True
 
@@ -115,6 +133,7 @@ def generate_document_objects(seq_input_dict_document):
 
 def main(seq_input_dict_document,
          argument_params,
+         n_jobs=-1,
          work_dir=tempfile.mkdtemp(),
          file_name=str(uuid.uuid4()),
          is_get_processed_doc=True,
@@ -139,15 +158,21 @@ def main(seq_input_dict_document,
         - Boolean flag if you get processed document or Not. KNP result string tends to be super big. So, if you put a lot of document, I strongly recomment to put is_get_processed_doc == False.
          And use db_handler.Sqlite3Handler(path_sqlite_file=path_working_db).get_record(is_use_generator=True).
     """
-    # type: (List[Dict[str,Any]],models.Params,str,str,bool,bool,bool,Callable[[str],str])->models.ResultObject
+    # type: (List[Dict[str,Any]],KnpSubProcess,int,str,str,bool,bool,bool,Callable[[str],str])->models.ResultObject
     if is_delete_working_db and is_get_processed_doc == False:
         raise Exception('Nothing is return object when is_delete_working_db = True and is_get_processed_doc = False')
 
 
     path_working_db = os.path.join(work_dir, file_name)
     seq_doc_obj = generate_document_objects(seq_input_dict_document)
+    # insert object into backendDB #
     initialize_text_db(seq_document_obj=seq_doc_obj, work_dir=work_dir, file_name=file_name)
-    parse_texts(argument_params, path_working_db, is_normalize_text=is_normalize_text, func_normalization=func_normalization)
+    # Run KNP analysis in parallel #
+    parse_texts(argument_params=argument_params,
+                path_sqlite3_db_handler=path_working_db,
+                n_jobs=n_jobs,
+                is_normalize_text=is_normalize_text,
+                func_normalization=func_normalization)
 
     if is_get_processed_doc:
         seq_processed_doc_obj = db_handler.Sqlite3Handler(path_sqlite_file=path_working_db).get_record()

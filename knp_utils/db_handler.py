@@ -1,9 +1,12 @@
 #! -*- coding: utf-8 -*-
-from typing import List, Tuple, Dict, Union, Iterable, Any
+# package modules
 from knp_utils import logger_unit
+from knp_utils.models import DocumentObject
+# typing
+from typing import List, Tuple, Dict, Union, Iterable, Any
+# else
 import os
 import traceback
-from datetime import datetime
 import sqlite3
 import six
 import time
@@ -14,6 +17,7 @@ TIME_SLEEP = random.randint(2, 10)
 N_RETRY = 60
 
 
+'''
 class DocumentObject(object):
     __slots__ = ('record_id', 'status', 'text',
                  'is_success', 'timestamp', 'updated_at', 'sub_id', 'parsed_result')
@@ -91,6 +95,7 @@ class DocumentObject(object):
             "timestamp": self.timestamp,
             "update_at": self.updated_at
         }
+        '''
 
 
 class DbHandler(object):
@@ -116,6 +121,8 @@ class DbHandler(object):
 
 
 class Sqlite3Handler(DbHandler):
+    """Class object of backend DB handler in this package. The class uses sqlite3.
+    """
     def __init__(self,
                  path_sqlite_file,
                  table_name_text="text",

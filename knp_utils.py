@@ -1,4 +1,5 @@
-from knp_utils import knp_job, models
+#! -*- coding: utf-8 -*-
+from knp_utils import knp_job, models, KnpSubProcess, DocumentObject, ResultObject
 import tempfile
 import uuid
 import argparse
@@ -25,10 +26,9 @@ parser.add_argument('--knp-server-host')
 parser.add_argument('--knp-server-port')"""
 args = parser.parse_args()
 
-arugment_params = models.Params(
+arugment_params = KnpSubProcess(
     knp_command=args.knp_command,
     juman_command=args.juman_command,
-    n_jobs=args.n_jobs,
     path_juman_rc=args.path_juman_rc
 )
 

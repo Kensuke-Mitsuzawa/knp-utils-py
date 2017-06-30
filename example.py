@@ -1,9 +1,8 @@
 #! -*- coding: utf-8 -*-
-from knp_utils import knp_job, models
+from knp_utils import knp_job, models, KnpSubProcess
 import six
 
-argument_param = models.Params(
-    n_jobs=1,
+argument_param = KnpSubProcess(
     knp_command='/usr/local/bin/knp',
     juman_command='/usr/local/bin/juman'
 )
@@ -23,6 +22,7 @@ else:
 
 result_obj = knp_job.main(seq_input_dict_document=input_document,
                           argument_params=argument_param,
+                          n_jobs=1,
                           is_normalize_text=True,
                           is_get_processed_doc=True)
 

@@ -2,7 +2,7 @@
 
 from setuptools import setup, find_packages
 
-version = '0.19'
+version = '0.2'
 name = 'knp-utils'
 short_description = 'Wrapper scripts for Japanese parser `KNP`'
 author = 'Kensuke Mitsuzawa'
@@ -26,7 +26,7 @@ except(IOError, ImportError):
     long_description = open('README.md').read()
 
 
-install_requires = ['joblib', 'typing', 'six']
+install_requires = ['joblib', 'typing', 'six', 'pexpect']
 dependency_links = []
 
 setup(
