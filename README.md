@@ -1,29 +1,53 @@
 # What's this ?
 
-- Wrapper functions for Japanese parser [KNP](http://nlp.ist.i.kyoto-u.ac.jp/?KNP)
-- This package run KNP as multi-threading job using sqlite3 as backend DB
+- Wrapper package for Japanese parser [KNP](http://nlp.ist.i.kyoto-u.ac.jp/?KNP)
+- This package make KNP as multi-threading job using sqlite3 for backend DB.
 
 Please visit [Github page](https://github.com/Kensuke-Mitsuzawa/knp-utils-py) also.
 
 # Contribution
 
-- Faster processing-time than other ways to call KNP
+- Easy interface to call KNP
+- Faster processing-time to call KNP  
 - Json style I/O, thus you can call it as API like
-- Commandline interface
+- Commandline interface / Flask-based Web application
+
+## Comparison of processing speed
 
 At my environment(MacBook Pro Early2015)
-Each way takes following time for processing 100 input-documents.
+
+You have 2 processing-modes in this package.
+
+- `pexpect`: Faster. It keep processes running in each thread.
+- `everytime`: Slower. It launches a process when one data comes.
+
+### Juman & KNP
 
 ```
-[knp-utils] elapsed_time:53.66389608383179 [Sec]
-[Native KNP subprocess] elapsed_time:91.62633109092712 [Sec]
-[Native KNP server] elapsed_time:88.35711193084717 [Sec]
-[Pyknp] elapsed_time:150.08908200263977 [Sec]
+pexpect mode, finished with :44.13979196548462[sec]
+everytime mode, finished with :38.31942701339722[sec]
+pyknp, finished with :64.74086809158325[sec]
 ```
+
+### Juman++ & KNP
+
+Juman++ is improved tokenizer after Juman. 
+It has neural-network-based(RNN) language model, thus they say it has good accuracy in tokenization task. 
+
+`pexpect` is much faster.
+This is because `pexpect` mode keeps a process running in one thread. Juman++ takes long time to load data model. 
+Therefore, `everytime` or `pyknp` takes long time than `pexpect`.
+
+```
+pexpect mode, finished with :48.096940994262695[sec]
+everytime mode, finished with :64.07872700691223[sec]
+pyknp, finished with : 602.032340992232452[sec]
+```
+
 
 # Requirement
 
-- Juman
+- Juman (or Juman++)
 - KNP
 - Sqlite3
 - Python
@@ -41,6 +65,19 @@ Each way takes following time for processing 100 input-documents.
 % ./configure && make  && make install
 ```
 
+## Juman++
+
+GCC version must be >= 5
+
+```
+wget http://nlp.ist.i.kyoto-u.ac.jp/DLcounter/lime.cgi?down=http://lotus.kuee.kyoto-u.ac.jp/nl-resource/jumanpp/jumanpp-1.02.tar.xz&name=jumanpp-1.02.tar.xz
+tar xJvf jumanpp-1.02.tar.xz
+cd jumanpp-1.02/
+./configure
+make
+[sudo] make install
+```
+
 ## KNP
 
 ```
@@ -50,7 +87,7 @@ Each way takes following time for processing 100 input-documents.
 % ./configure && make  && make install
 ```
 
-## package
+## Package install
 
 ```
 python setup.py install

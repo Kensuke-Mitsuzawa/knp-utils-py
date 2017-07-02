@@ -12,7 +12,7 @@ class TestCore(unittest.TestCase):
         # procedures before tests are started. This code block is executed only once
 
         cls.db_file_name = 'model_database.sqlite3'
-        if os.path.dirname(__file__) == 'tests':
+        if 'tests' in os.path.dirname(__file__):
             cls.path_input_documents = './resources/input_sample.json'
             cls.path_work_dir = './resources'
         else:
@@ -52,14 +52,17 @@ class TestCore(unittest.TestCase):
         """"""
         self.test_initialize_text_db()
         handler = db_handler.Sqlite3Handler(os.path.join(self.path_work_dir, self.db_file_name))
-        knp_job.parse_one_text(record_id=4,
-                               path_sqlite3_db_handler=os.path.join(self.path_work_dir, self.db_file_name),
-                               argument_params=self.param_argument)
+        knp_job.parse_text_block(seq_record_id=[4],
+                                 path_sqlite3_db_handler=os.path.join(self.path_work_dir, self.db_file_name),
+                                 knp_command=self.path_juman,
+                                 juman_command=self.path_juman)
 
     def test_parse_texts(self):
         self.test_initialize_text_db()
         knp_job.parse_texts(path_sqlite3_db_handler=os.path.join(self.path_work_dir, self.db_file_name),
-                            argument_params=self.param_argument)
+                            n_jobs=2,
+                            knp_command=self.path_knp,
+                            juman_command=self.path_juman)
 
     def test_stress_test_pattern1(self):
         """大量の入力文を与えた場合の挙動をチェックする
@@ -69,7 +72,6 @@ class TestCore(unittest.TestCase):
 
         result_obj = knp_job.main(
             seq_input_dict_document=seq_long_test_input,
-            argument_params=self.param_argument,
             is_normalize_text=True)
         self.assertTrue(len(result_obj.seq_document_obj) == len(seq_long_test_input))
 
@@ -81,7 +83,6 @@ class TestCore(unittest.TestCase):
 
         result_obj = knp_job.main(
             seq_input_dict_document=seq_long_test_input,
-            argument_params=self.param_argument,
             is_normalize_text=False)
         self.assertTrue(len(result_obj.seq_document_obj) == len(seq_long_test_input))
 
@@ -95,7 +96,6 @@ class TestCore(unittest.TestCase):
 
         result_obj = knp_job.main(
             seq_input_dict_document=seq_input,
-            argument_params=self.param_argument,
             is_normalize_text=False,
             is_delete_working_db=True
         )

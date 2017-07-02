@@ -169,13 +169,23 @@ def main(seq_input_dict_document,
         - path into directory where working-db is saved
     - file_name
         - file name of working sqlite3-db file
+    - knp_command
+        - Path to KNP
+    - juman_command
+        - Path to Juman. You can set path to Juman++ also
+    - path_juman_rc
+        - Path to Jumanrc(config file) if you have
+    - process_mode
+        - A way to manage processes in multi-thread.
+            - "pexpect": Faster. It keep processes running in each thread.
+            - "everytime": Slower. It launches a process when one data comes. 
     - is_delete_working_db
         - Boolean flag if you save working sqlite3 db file or Not
     - is_get_processed_doc
         - Boolean flag if you get processed document or Not. KNP result string tends to be super big. So, if you put a lot of document, I strongly recomment to put is_get_processed_doc == False.
          And use Sqlite3Handler(path_sqlite_file=path_working_db).get_record(is_use_generator=True).
     """
-    # type: ()->ResultObject
+    # type: (List[Dict[str,Any]],int,text_type,text_type,text_type,text_type,text_type,text_type,bool,bool,bool,Callable[[text_type],text_type])->ResultObject
     if is_delete_working_db and is_get_processed_doc == False:
         raise Exception('Nothing is return object when is_delete_working_db = True and is_get_processed_doc = False')
 
