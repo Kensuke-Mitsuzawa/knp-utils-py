@@ -9,11 +9,13 @@ import six
 import socket
 import re
 import shutil
-import signal
 import pexpect
 import os
+import sys
 from typing import List, Dict, Any, Union
 from six import text_type
+# errors
+from knp_utils.errors import ParserIntializeError
 
 
 if six.PY2:
@@ -133,7 +135,6 @@ class UnixProcessHandler(object):
         - This function monitors time which takes for getting the result.
         """
         # type: (text_type)->text_type
-        print(input_string)
         self.process_analyzer.sendline(input_string)
         buffer = ""
         while True:
@@ -163,6 +164,57 @@ class UnixProcessHandler(object):
             raise Exception()
 
 
+class SubprocessHandler(object):
+    """A old fashion way to keep connection into UNIX process"""
+    def __init__(self, command):
+        """"""
+        # type: (text_type)->None
+        subproc_args = {'stdin': subprocess.PIPE, 'stdout': subprocess.PIPE,
+                        'stderr': subprocess.STDOUT, 'cwd': '.',
+                        'close_fds': sys.platform != "win32"}
+        try:
+            env = os.environ.copy()
+            self.process = subprocess.Popen('bash -c "%s"' % command, env=env,
+                                            shell=True, **subproc_args)
+        except OSError:
+            raise ParserIntializeError(message='Failed to initialize parser.', path_to_parser=command)
+        self.command = command
+        (self.stdouterr, self.stdin) = (self.process.stdout, self.process.stdin)
+
+    def __del__(self):
+        self.process.stdin.close()
+        self.process.stdout.close()
+        try:
+            self.process.kill()
+            self.process.wait()
+        except OSError:
+            pass
+
+    def query(self, sentence, eos_pattern):
+        #  type: (text_type, text_type)->text_type
+        assert (isinstance(sentence, six.text_type))
+        if isinstance(sentence, six.text_type) and six.PY2:
+            # python2で入力がunicodeだった場合の想定 #
+            self.process.stdin.write(sentence.encode('utf-8') + '\n'.encode('utf-8'))
+        elif isinstance(sentence, str) and six.PY2:
+            self.process.stdin.write(sentence + '\n'.encode('utf-8'))
+        elif isinstance(sentence, str) and six.PY3:
+            self.process.stdin.write(sentence.encode('utf-8') + '\n'.encode('utf-8'))
+
+        self.process.stdin.flush()
+        result = ""
+
+        while True:
+            line = self.stdouterr.readline()[:-1].decode('utf-8')
+            if re.search(eos_pattern, line):
+                break
+            if re.search(pattern=r'No\ssuch\sfile\sor\sdirectory', string=result):
+                raise ParserIntializeError(message=result, path_to_parser=self.command)
+            result = "%s%s\n" % (result, line)
+
+        return result
+
+
 # todo n_jobsを消すこと
 class KnpSubProcess(object):
     """This class defines process to run KNP analysis."""
@@ -177,6 +229,7 @@ class KnpSubProcess(object):
                  process_mode='pexpect',
                  path_juman_rc=None,
                  timeout_second=60,
+                 eos_pattern="EOS",
                  n_jobs=None):
         """* Parameters
         - knp_command: Path into Bin of KNP
@@ -191,7 +244,7 @@ class KnpSubProcess(object):
         - timeout_second: 
         - n_jobs: Un-needed option. 
         """
-        # type: (str,str,str,int,str,int,bool,str,str,int,int)->None
+        # type: (str,str,str,int,str,int,bool,str,str,int,str,int)->None
         PROCESS_MODE = ('everytime', 'pexpect')
 
         self.knp_command = knp_command
@@ -204,6 +257,7 @@ class KnpSubProcess(object):
         self.is_use_jumanpp = is_use_jumanpp
         self.process_mode = process_mode
         self.timeout_second = timeout_second
+        self.eos_pattern = eos_pattern
 
         # Check jumanrc file path #
         if not self.path_juman_rc is None and not os.path.exists(self.path_juman_rc):
@@ -242,11 +296,14 @@ class KnpSubProcess(object):
         else:
             raise Exception("It failed to initialize. Check your configurations.")
 
-
-    def __launch_pexpect_mode(self):
+    def __launch_pexpect_mode(self, is_keep_process=True):
         """* What you can do
         - It defines process with pexpect
+        - For KNP
+            - with keep process running (experimental)
+            - with launching KNP command every time
         """
+        # type: (bool)->None
         self.validate_arguments()
         # set juman/juman++ unix process #
         if self.is_use_jumanpp:
@@ -260,11 +317,11 @@ class KnpSubProcess(object):
             self.juman = UnixProcessHandler(unix_command=self.juman_command,
                                             option=option_string,
                                             timeout_second=self.timeout_second)
-        # set KNP unix process #
-        self.knp= UnixProcessHandler(unix_command=self.knp_command,
-                                     option='-tab',
-                                     timeout_second=self.timeout_second)
-
+        # set KNP process #
+        if is_keep_process:
+            self.knp = SubprocessHandler(command='knp -tab')
+        else:
+            self.knp = [self.knp_command, '-tab']
 
     def __launch_everytime_mode(self):
         """"""
@@ -286,7 +343,6 @@ class KnpSubProcess(object):
         self.juman = [self.juman_command, '-C', '{}:{}'.format(self.juman_server_host, self.juman_server_port)]
         self.knp = [self.knp_command, '-C', '{}:{}'.format(self.knp_server_host, self.knp_server_port), '-tab']
 
-
     def validate_arguments(self):
         # argumentの検証方法を考えること
         if six.PY3:
@@ -306,15 +362,45 @@ class KnpSubProcess(object):
                 raise Exception("No command at {}".format(self.knp_command))
 
     def __run_pexpect_mode(self, input_string):
-        """* What you can do"""
+        """* What you can do
+        - It calls Juman in UNIX process.
+        - It calls KNP
+            - with keep process running
+            - with launching KNP command everytime
+        """
         # type: (text_type)->text_type
         assert isinstance(self.juman, UnixProcessHandler)
-        assert isinstance(self.knp, UnixProcessHandler)
         juman_result = self.juman.query(input_string=input_string)
-        knp_result = self.knp.query(input_string=juman_result)
-
-        return knp_result
-
+        if isinstance(self.knp, SubprocessHandler):
+            try:
+                parsed_result = self.knp.query(sentence=juman_result.strip(), eos_pattern='EOS')
+                return parsed_result
+            except:
+                traceback_message = traceback.format_exc()
+                return 'error traceback={}'.format(traceback_message)
+        else:
+            # Delete final \n of Juman result document. This \n causes error at KNP #
+            echo_process = ["echo", juman_result.strip()]
+            try:
+                echo_ps = subprocess.Popen(echo_process, stdout=subprocess.PIPE)
+                echo_ps.wait()
+                parsed_result = subprocess.check_output(self.knp, stdin=echo_ps.stdout)
+                if six.PY2:
+                    return parsed_result
+                else:
+                    return parsed_result.decode('utf-8')
+            except subprocess.CalledProcessError:
+                traceback_message = traceback.format_exc()
+                logger.error("Error with command={}".format(traceback.format_exc()))
+                return 'error with CalledProcessError. traceback={}'.format(traceback_message)
+            except UnicodeDecodeError:
+                traceback_message = traceback.format_exc()
+                logger.error("Error with command={}".format(traceback.format_exc()))
+                return 'error with UnicodeDecodeError traceback={}'.format(traceback_message)
+            except Exception:
+                traceback_message = traceback.format_exc()
+                logger.error("Error with command={}".format(traceback.format_exc()))
+                return 'error traceback={}'.format(traceback_message)
 
     def __run_everytime_mode(self, input_string):
         """"""
@@ -377,7 +463,7 @@ class KnpSubProcess(object):
             logger.error("Error with command={}".format(traceback.format_exc()))
             return 'error traceback={}'.format(traceback_message)
 
-
+    # todo 失敗時の信号をタプルで返却
     def run_command(self, text):
         """* What you can do
         - You run analysis of Juman(Juman++) and KNP.

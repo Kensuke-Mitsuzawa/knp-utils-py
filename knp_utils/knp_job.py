@@ -46,6 +46,7 @@ def parse_one_text(record_id,
     else:
         text = document_obj.text
 
+    # todo 結果をタプルで返す。成功・失敗の信号を出す
     parsed_result = argument_params.run_command(text=text)
     document_obj.set_knp_parsed_result(parsed_result=parsed_result)
     process_db_handler.update_record(document_obj)
@@ -65,24 +66,14 @@ def parse_texts(argument_params,
     # type: (KnpSubProcess,str,int,bool,Callable[[str],str])->bool
     seq_ids_to_process = db_handler.Sqlite3Handler(path_sqlite3_db_handler).get_seq_ids_not_processed()
     # Run KNP process in parallel #
-    for record_id in seq_ids_to_process:
-        parse_one_text(
-            record_id=record_id,
-            path_sqlite3_db_handler=path_sqlite3_db_handler,
-            argument_params=argument_params,
-            is_normalize_text=is_normalize_text,
-            func_normalization=func_normalization
-        )
-
-    # todo
     #joblib.Parallel(n_jobs=n_jobs, backend='threading')(joblib.delayed(parse_one_text)(
-    '''joblib.Parallel(n_jobs=n_jobs)(joblib.delayed(parse_one_text)(
+    joblib.Parallel(n_jobs=n_jobs)(joblib.delayed(parse_one_text)(
         record_id=record_id,
         path_sqlite3_db_handler=path_sqlite3_db_handler,
         argument_params=argument_params,
         is_normalize_text=is_normalize_text,
         func_normalization=func_normalization
-    ) for record_id in seq_ids_to_process)'''
+    ) for record_id in seq_ids_to_process)
 
     return True
 
