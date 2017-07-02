@@ -12,7 +12,7 @@ import shutil
 import pexpect
 import os
 import sys
-from typing import List, Dict, Any, Union
+from typing import List, Dict, Any, Union, Tuple
 from six import text_type
 # errors
 from knp_utils.errors import ParserIntializeError
@@ -215,7 +215,6 @@ class SubprocessHandler(object):
         return result
 
 
-# todo n_jobsを消すこと
 class KnpSubProcess(object):
     """This class defines process to run KNP analysis."""
     def __init__(self,
@@ -228,9 +227,7 @@ class KnpSubProcess(object):
                  is_use_jumanpp=None,
                  process_mode='pexpect',
                  path_juman_rc=None,
-                 timeout_second=60,
-                 eos_pattern="EOS",
-                 n_jobs=None):
+                 eos_pattern="EOS"):
         """* Parameters
         - knp_command: Path into Bin of KNP
         - juman_command: Path into Bin of Juman(or Juman++)
@@ -241,8 +238,6 @@ class KnpSubProcess(object):
         - is_use_jumanpp: Bool flag to use Juman++ instead of Juman. You're supposed to install Juman++ beforehand.
         - process_mode: Way to call UNIX commands. 1; You call UNIX commands everytime. 2; You keep UNIX commands running.
         - path_juman_rc: Path into Jumanrc file.
-        - timeout_second: 
-        - n_jobs: Un-needed option. 
         """
         # type: (str,str,str,int,str,int,bool,str,str,int,str,int)->None
         PROCESS_MODE = ('everytime', 'pexpect')
@@ -256,8 +251,8 @@ class KnpSubProcess(object):
         self.path_juman_rc = path_juman_rc
         self.is_use_jumanpp = is_use_jumanpp
         self.process_mode = process_mode
-        self.timeout_second = timeout_second
         self.eos_pattern = eos_pattern
+        self.timeout_second = 60
 
         # Check jumanrc file path #
         if not self.path_juman_rc is None and not os.path.exists(self.path_juman_rc):
@@ -368,16 +363,20 @@ class KnpSubProcess(object):
             - with keep process running
             - with launching KNP command everytime
         """
-        # type: (text_type)->text_type
+        # type: (text_type)->Tuple[bool,text_type]
         assert isinstance(self.juman, UnixProcessHandler)
-        juman_result = self.juman.query(input_string=input_string)
+        try:
+            juman_result = self.juman.query(input_string=input_string)
+        except:
+            return (False, 'error traceback={}'.format(traceback.format_exc()))
+
         if isinstance(self.knp, SubprocessHandler):
             try:
                 parsed_result = self.knp.query(sentence=juman_result.strip(), eos_pattern='EOS')
-                return parsed_result
+                return (True, parsed_result)
             except:
                 traceback_message = traceback.format_exc()
-                return 'error traceback={}'.format(traceback_message)
+                return (False, 'error traceback={}'.format(traceback_message))
         else:
             # Delete final \n of Juman result document. This \n causes error at KNP #
             echo_process = ["echo", juman_result.strip()]
@@ -386,25 +385,25 @@ class KnpSubProcess(object):
                 echo_ps.wait()
                 parsed_result = subprocess.check_output(self.knp, stdin=echo_ps.stdout)
                 if six.PY2:
-                    return parsed_result
+                    return (True, parsed_result)
                 else:
-                    return parsed_result.decode('utf-8')
+                    return (True, parsed_result.decode('utf-8'))
             except subprocess.CalledProcessError:
                 traceback_message = traceback.format_exc()
                 logger.error("Error with command={}".format(traceback.format_exc()))
-                return 'error with CalledProcessError. traceback={}'.format(traceback_message)
+                return (False, 'error with CalledProcessError. traceback={}'.format(traceback_message))
             except UnicodeDecodeError:
                 traceback_message = traceback.format_exc()
                 logger.error("Error with command={}".format(traceback.format_exc()))
-                return 'error with UnicodeDecodeError traceback={}'.format(traceback_message)
+                return (False, 'error with UnicodeDecodeError traceback={}'.format(traceback_message))
             except Exception:
                 traceback_message = traceback.format_exc()
                 logger.error("Error with command={}".format(traceback.format_exc()))
-                return 'error traceback={}'.format(traceback_message)
+                return (False, 'error traceback={}'.format(traceback_message))
 
     def __run_everytime_mode(self, input_string):
         """"""
-        # type: (text_type)->text_type
+        # type: (text_type)->Tuple[bool,text_type]
         assert isinstance(self.juman, list)
         assert isinstance(self.knp, list)
         echo_process = ["echo", input_string]
@@ -416,26 +415,26 @@ class KnpSubProcess(object):
             parsed_result = subprocess.check_output(self.knp, stdin=juman_ps.stdout)
 
             if six.PY2:
-                return parsed_result
+                return (True, parsed_result)
             else:
-                return parsed_result.decode('utf-8')
+                return (True, parsed_result.decode('utf-8'))
         except subprocess.CalledProcessError:
             traceback_message = traceback.format_exc()
             logger.error("Error with command={}".format(traceback.format_exc()))
-            return 'error with CalledProcessError. traceback={}'.format(traceback_message)
+            return (False, 'error with CalledProcessError. traceback={}'.format(traceback_message))
         except UnicodeDecodeError:
             traceback_message = traceback.format_exc()
             logger.error("Error with command={}".format(traceback.format_exc()))
-            return 'error with UnicodeDecodeError traceback={}'.format(traceback_message)
+            return (False, 'error with UnicodeDecodeError traceback={}'.format(traceback_message))
         except Exception:
             traceback_message = traceback.format_exc()
             logger.error("Error with command={}".format(traceback.format_exc()))
-            return 'error traceback={}'.format(traceback_message)
+            return (False, 'error traceback={}'.format(traceback_message))
 
 
     def __run_server_model(self, input_string):
         """"""
-        # type: (text_type)->text_type
+        # type: (text_type)->Tuple[bool,text_type]
         assert isinstance(self.juman, list)
         assert isinstance(self.knp, list)
         echo_process = ["echo", input_string]
@@ -447,35 +446,34 @@ class KnpSubProcess(object):
             parsed_result = subprocess.check_output(self.knp, stdin=juman_ps.stdout)
 
             if six.PY2:
-                return parsed_result
+                return (True, parsed_result)
             else:
-                return parsed_result.decode('utf-8')
+                return (True, parsed_result.decode('utf-8'))
         except subprocess.CalledProcessError:
             traceback_message = traceback.format_exc()
             logger.error("Error with command={}".format(traceback.format_exc()))
-            return 'error with CalledProcessError. traceback={}'.format(traceback_message)
+            return (False, 'error with CalledProcessError. traceback={}'.format(traceback_message))
         except UnicodeDecodeError:
             traceback_message = traceback.format_exc()
             logger.error("Error with command={}".format(traceback.format_exc()))
-            return 'error with UnicodeDecodeError traceback={}'.format(traceback_message)
+            return (False, 'error with UnicodeDecodeError traceback={}'.format(traceback_message))
         except Exception:
             traceback_message = traceback.format_exc()
             logger.error("Error with command={}".format(traceback.format_exc()))
-            return 'error traceback={}'.format(traceback_message)
+            return (False, 'error traceback={}'.format(traceback_message))
 
-    # todo 失敗時の信号をタプルで返却
     def run_command(self, text):
         """* What you can do
         - You run analysis of Juman(Juman++) and KNP.
         - You have 2 ways to call commands. 
         """
-        # type: (text_type)->text_type
+        # type: (text_type,)->Tuple[bool,text_type]
         if (not self.juman_server_host is None and not self.juman_server_port is None) and (not self.knp_server_host is None and self.knp_server_port is None):
-            self.__run_server_model(text)
+            return self.__run_server_model(text)
         elif self.process_mode == 'pexpect':
-            self.__run_pexpect_mode(text)
+            return self.__run_pexpect_mode(text)
         elif self.process_mode == 'everytime':
-            self.__run_everytime_mode(text)
+            return self.__run_everytime_mode(text)
         else:
             raise Exception("It failed to initialize. Check your configurations.")
 
@@ -526,20 +524,26 @@ class DocumentObject(object):
         self.updated_at = updated_at
         self.is_success = is_success
 
-    def set_knp_parsed_result(self, parsed_result):
+    def set_knp_parsed_result(self, t_parsed_result):
         """* What you can do
         - It sets KNP parsed result
         """
-        # type: (str)->None
-        is_success_flag = self.__check_knp_result(parsed_result=parsed_result)
+        # type: (Tuple[bool,text_type],)->None
+        if t_parsed_result[0]==False:
+            # If it has something system error, tuple[0] is False #
+            is_success_flag = False
+        else:
+            # It checks KNP result has error message or NOT #
+            is_success_flag = self.__check_knp_result(parsed_result=t_parsed_result[1])
+
         self.is_success = is_success_flag
-        self.parsed_result = parsed_result
+        self.parsed_result = t_parsed_result[1]
 
     def __check_knp_result(self, parsed_result):
         """* What you can do
         - It checks if knp result is error or not
         """
-        # type: (str)->bool
+        # type: (text_type)->bool
         if parsed_result is None:
             return False
         elif 'error' in parsed_result.lower():

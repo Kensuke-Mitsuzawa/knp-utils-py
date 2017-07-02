@@ -1,11 +1,9 @@
 #! -*- coding: utf-8 -*-
 from knp_utils import knp_job, models, KnpSubProcess
 import six
+import logging
+logger = logging.getLogger('command')
 
-argument_param = KnpSubProcess(
-    knp_command='/usr/local/bin/knp',
-    juman_command='/usr/local/bin/juman'
-)
 
 if six.PY2:
     input_document = [
@@ -23,13 +21,16 @@ else:
     ]
 
 result_obj = knp_job.main(seq_input_dict_document=input_document,
-                          argument_params=argument_param,
-                          n_jobs=1,
+                          n_jobs=3,
                           is_normalize_text=True,
-                          is_get_processed_doc=True)
+                          is_get_processed_doc=True,
+                          juman_command="/usr/local/bin/juman",
+                          knp_command="/usr/local/bin/knp")
 
 import json
-print(json.dumps(result_obj.to_dict(), ensure_ascii=False))
+logger.info(msg="--- example of parsed result ---")
+print(json.dumps(result_obj.to_dict()[0], ensure_ascii=False))
+logger.info('---')
 
 ### With pyknp
 try:
