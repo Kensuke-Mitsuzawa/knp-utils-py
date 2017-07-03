@@ -1,9 +1,12 @@
 #! -*- coding: utf-8 -*-
-from typing import List, Tuple, Dict, Union, Iterable, Any
+# package modules
 from knp_utils import logger_unit
+from knp_utils.models import DocumentObject
+# typing
+from typing import List, Tuple, Dict, Union, Iterable, Any
+# else
 import os
 import traceback
-from datetime import datetime
 import sqlite3
 import six
 import time
@@ -12,85 +15,6 @@ logger = logger_unit.logger
 
 TIME_SLEEP = random.randint(2, 10)
 N_RETRY = 60
-
-
-class DocumentObject(object):
-    __slots__ = ('record_id', 'status', 'text',
-                 'is_success', 'timestamp', 'updated_at', 'sub_id', 'parsed_result')
-
-    def __init__(self,
-                 record_id,
-                 text,
-                 status,
-                 parsed_result=None,
-                 is_success=None,
-                 sub_id=None,
-                 timestamp = datetime.now(),
-                 updated_at = datetime.now()):
-        # type: (int,str,bool,Union[None,str],bool,str,datetime,datetime) -> None
-
-        if six.PY2:
-            if isinstance(text, str):
-                self.text = text.decode('utf-8')
-            else:
-                self.text = text
-
-            if isinstance(sub_id, str):
-                self.sub_id = sub_id.decode('utf-8')
-            else:
-                self.sub_id = sub_id
-
-            if isinstance(parsed_result, str):
-                self.parsed_result = parsed_result.decode('utf-8')
-            else:
-                self.parsed_result = parsed_result
-        else:
-            self.text = text
-            self.sub_id = sub_id
-            self.parsed_result = parsed_result
-
-        self.record_id = record_id
-        self.status = status
-        self.timestamp = timestamp
-        self.updated_at = updated_at
-        self.is_success = is_success
-
-    def set_knp_parsed_result(self, parsed_result):
-        """* What you can do
-        - It sets KNP parsed result
-        """
-        # type: (str)->None
-        is_success_flag = self.__check_knp_result(parsed_result=parsed_result)
-        self.is_success = is_success_flag
-        self.parsed_result = parsed_result
-
-    def __check_knp_result(self, parsed_result):
-        """* What you can do
-        - It checks if knp result is error or not
-        """
-        # type: (str)->bool
-        if parsed_result is None:
-            return False
-        elif 'error' in parsed_result.lower():
-            return False
-        else:
-            return True
-
-    def to_dict(self):
-        """* What you can do
-        - You see parsed result with dict format
-        """
-        # type: ()->Dict[str,Any]
-        return {
-            "record_id": self.record_id,
-            "sub_id": self.sub_id,
-            "status": self.status,
-            "text": self.text,
-            "is_success": self.is_success,
-            "parsed_result": self.parsed_result,
-            "timestamp": self.timestamp,
-            "update_at": self.updated_at
-        }
 
 
 class DbHandler(object):
@@ -116,6 +40,8 @@ class DbHandler(object):
 
 
 class Sqlite3Handler(DbHandler):
+    """Class object of backend DB handler in this package. The class uses sqlite3.
+    """
     def __init__(self,
                  path_sqlite_file,
                  table_name_text="text",
