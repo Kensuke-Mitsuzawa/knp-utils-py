@@ -1,3 +1,8 @@
+# knp-utils-py
+
+
+[![Build Status](https://travis-ci.org/Kensuke-Mitsuzawa/knp-utils-py.svg?branch=master)](https://travis-ci.org/Kensuke-Mitsuzawa/knp-utils-py)[![MIT License](http://img.shields.io/badge/license-MIT-blue.svg?style=flat)](LICENSE)
+
 # What's this ?
 
 - Wrapper package for Japanese parser [KNP](http://nlp.ist.i.kyoto-u.ac.jp/?KNP)

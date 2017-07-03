@@ -44,7 +44,7 @@ is_jumanpp_install=$?
 
 if [ $is_jumanpp_install -eq 127 ]; then
     # jumanpp
-    wget http://nlp.ist.i.kyoto-u.ac.jp/DLcounter/lime.cgi?down=http://lotus.kuee.kyoto-u.ac.jp/nl-resource/jumanpp/jumanpp-1.02.tar.xz&name=jumanpp-1.02.tar.xz -O jumanpp-1.02.tar.xz
+    wget -O jumanpp-1.02.tar.xz "http://nlp.ist.i.kyoto-u.ac.jp/DLcounter/lime.cgi?down=http://lotus.kuee.kyoto-u.ac.jp/nl-resource/jumanpp/jumanpp-1.02.tar.xz&name=jumanpp-1.02.tar.xz"
     tar xJvf jumanpp-1.02.tar.xz
     cd jumanpp-1.02/
     ./configure && make && make install
