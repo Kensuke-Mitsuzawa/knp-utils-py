@@ -29,10 +29,7 @@ before_install:
   - export CXX="g++-5"
   - export CFLAGS=-std=c++11
   - export CXXFLAGS=-std=c++11
-  - which mecab-config
   - sudo make install
-  - git clone --depth 1 https://github.com/neologd/mecab-ipadic-neologd.git
-  - cd mecab-ipadic-neologd && echo yes | sudo ./bin/install-mecab-ipadic-neologd && cd ../
   - sudo juman -S
 install:
   - python --version
