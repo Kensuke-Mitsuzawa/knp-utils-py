@@ -48,7 +48,10 @@ def example_interface():
         import pyknp
     except:
         import pip
-        pip.main(['install', 'http://nlp.ist.i.kyoto-u.ac.jp/DLcounter/lime.cgi?down=http://lotus.kuee.kyoto-u.ac.jp/nl-resource/pyknp/pyknp-0.3.tar.gz&name=pyknp-0.3.tar.gz'])
+        try:
+            pip.main(['install', 'http://nlp.ist.i.kyoto-u.ac.jp/DLcounter/lime.cgi?down=http://lotus.kuee.kyoto-u.ac.jp/nl-resource/pyknp/pyknp-0.3.tar.gz&name=pyknp-0.3.tar.gz'])
+        except:
+            logger.error(msg="Failed to install pyknp. Skip this process.")
     else:
         from pyknp import KNP
         knp_obj = KNP()
@@ -100,13 +103,23 @@ def performance_comparison():
     print("everytime mode, finished with :{0}".format(elapsed_time) + "[sec]")
 
     ## pyknp which is official KNP wrapper ##
-    start = time.time()
-    from pyknp import KNP
-    knp_obj = KNP(command=PATH_KNP_COMMAND, jumancommand=PATH_JUMAN_COMMAND)
-    for document_obj in input_document:
-        knp_obj.knp(sentence=knp_job.func_normalize_text(document_obj['text']))
-    elapsed_time = time.time() - start
-    print("pyknp, finished with :{0}".format(elapsed_time) + "[sec]")
+    ### With pyknp
+    try:
+        import pyknp
+    except:
+        import pip
+        try:
+            pip.main(['install', 'http://nlp.ist.i.kyoto-u.ac.jp/DLcounter/lime.cgi?down=http://lotus.kuee.kyoto-u.ac.jp/nl-resource/pyknp/pyknp-0.3.tar.gz&name=pyknp-0.3.tar.gz'])
+        except:
+            logger.error(msg="Failed to install pyknp. Skip this process.")
+    else:
+        start = time.time()
+        from pyknp import KNP
+        knp_obj = KNP(command=PATH_KNP_COMMAND, jumancommand=PATH_JUMAN_COMMAND)
+        for document_obj in input_document:
+            knp_obj.knp(sentence=knp_job.func_normalize_text(document_obj['text']))
+        elapsed_time = time.time() - start
+        print("pyknp, finished with :{0}".format(elapsed_time) + "[sec]")
 
 
 if __name__=='__main__':
