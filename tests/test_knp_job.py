@@ -25,37 +25,32 @@ class TestCore(unittest.TestCase):
         with open(cls.path_input_documents, 'r') as f:
             cls.seq_docs = json.loads(f.read())
 
-        if os.path.exists('/usr/local/bin/knp'):
-            cls.path_knp = '/usr/local/bin/knp'
-        else:
-            if six.PY2:
-                doc_command_string = "echo '' | {}".format('knp')
-                command_check = os.system(doc_command_string)
-                if command_check == 0:
-                    cls.path_knp = 'knp'
-                else:
-                    raise Exception("No command at {}".format('knp'))
-            else:
-                if shutil.which('knp'):
-                    cls.path_knp = 'knp'
-                else:
-                    raise Exception("No command at {}".format('knp'))
 
-        if os.path.exists('/usr/local/bin/juman'):
-            cls.path_juman = '/usr/local/bin/juman'
-        else:
-            if six.PY2:
-                doc_command_string = "echo '' | {}".format('juman')
-                command_check = os.system(doc_command_string)
-                if command_check == 0:
-                    cls.path_juman = 'juman'
-                else:
-                    raise Exception("No command at {}".format('juman'))
+        if six.PY2:
+            doc_command_string = "echo '' | {}".format('knp')
+            command_check = os.system(doc_command_string)
+            if command_check == 0:
+                cls.path_knp = 'knp'
             else:
-                if shutil.which('knp'):
-                    cls.path_juman = 'knp'
-                else:
-                    raise Exception("No command at {}".format('juman'))
+                raise Exception("No command at {}".format('knp'))
+        else:
+            if shutil.which('knp'):
+                cls.path_knp = 'knp'
+            else:
+                raise Exception("No command at {}".format('knp'))
+
+        if six.PY2:
+            doc_command_string = "echo '' | {}".format('juman')
+            command_check = os.system(doc_command_string)
+            if command_check == 0:
+                cls.path_juman = 'juman'
+            else:
+                raise Exception("No command at {}".format('juman'))
+        else:
+            if shutil.which('juman'):
+                cls.path_juman = 'juman'
+            else:
+                raise Exception("No command at {}".format('juman'))
 
 
     @classmethod
