@@ -1,10 +1,12 @@
+#! -*- coding: utf-8 -*-
 from knp_utils import knp_job
 from knp_utils.models import  Params
 from knp_utils import db_handler
 import unittest
 import json
 import os
-
+import shutil
+import six
 
 class TestCore(unittest.TestCase):
     @classmethod
@@ -12,7 +14,8 @@ class TestCore(unittest.TestCase):
         # procedures before tests are started. This code block is executed only once
 
         cls.db_file_name = 'model_database.sqlite3'
-        if 'tests' in os.path.dirname(__file__):
+        if 'tests' in os.getcwd():
+            print(os.path.dirname(__file__))
             cls.path_input_documents = './resources/input_sample.json'
             cls.path_work_dir = './resources'
         else:
@@ -22,11 +25,37 @@ class TestCore(unittest.TestCase):
         with open(cls.path_input_documents, 'r') as f:
             cls.seq_docs = json.loads(f.read())
 
-        cls.path_knp = '/usr/local/bin/knp'
-        cls.path_juman = '/usr/local/bin/juman'
+        if os.path.exists('/usr/local/bin/knp'):
+            cls.path_knp = '/usr/local/bin/knp'
+        else:
+            if six.PY2:
+                doc_command_string = "echo '' | {}".format('knp')
+                command_check = os.system(doc_command_string)
+                if command_check == 0:
+                    cls.path_knp = 'knp'
+                else:
+                    raise Exception("No command at {}".format('knp'))
+            else:
+                if shutil.which('knp'):
+                    cls.path_knp = 'knp'
+                else:
+                    raise Exception("No command at {}".format('knp'))
 
-        cls.param_argument = Params(knp_command=cls.path_knp,
-                                    juman_command=cls.path_juman)
+        if os.path.exists('/usr/local/bin/juman'):
+            cls.path_juman = '/usr/local/bin/juman'
+        else:
+            if six.PY2:
+                doc_command_string = "echo '' | {}".format('juman')
+                command_check = os.system(doc_command_string)
+                if command_check == 0:
+                    cls.path_juman = 'juman'
+                else:
+                    raise Exception("No command at {}".format('juman'))
+            else:
+                if shutil.which('knp'):
+                    cls.path_juman = 'knp'
+                else:
+                    raise Exception("No command at {}".format('juman'))
 
 
     @classmethod
@@ -77,7 +106,7 @@ class TestCore(unittest.TestCase):
 
     def test_stress_test_pattern2(self):
         """大量の入力文を与えた場合の挙動をチェックする
-        ### with normalization is True
+        ### with normalization is False
         """
         seq_long_test_input = self.seq_docs * 20
 
