@@ -5,9 +5,12 @@ import logging
 logger = logging.getLogger('command')
 
 
-PATH_JUMAN_COMMAND="/usr/local/bin/juman"
+#PATH_JUMAN_COMMAND="/usr/local/bin/juman"
 #PATH_JUMAN_COMMAND="/usr/local/bin/jumanpp"
-PATH_KNP_COMMAND="/usr/local/bin/knp"
+#PATH_KNP_COMMAND="/usr/local/bin/knp"
+PATH_JUMAN_COMMAND="juman"
+PATH_KNP_COMMAND="knp"
+
 
 def example_interface():
     """This functions shows you how to use interface function"""

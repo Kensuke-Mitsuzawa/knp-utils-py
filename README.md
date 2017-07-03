@@ -19,12 +19,12 @@ Please visit [Github page](https://github.com/Kensuke-Mitsuzawa/knp-utils-py) al
 
 ## Comparison of processing speed
 
-At my environment(MacBook Pro Early2015)
-
 You have 2 processing-modes in this package.
 
 - `pexpect`: Faster. It keep processes running in each thread.
 - `everytime`: Slower. It launches a process when one data comes.
+
+NOTE: Time to process 40 documents at my environment(MacBook Pro Early2015) 
 
 ### Juman & KNP
 

@@ -64,7 +64,7 @@ if [ $is_knp_install -eq 127 ]; then
     # install knp
     wget -O knp-4.17.tar.bz2 "http://nlp.ist.i.kyoto-u.ac.jp/DLcounter/lime.cgi?down=http://nlp.ist.i.kyoto-u.ac.jp/nl-resource/knp/knp-4.17.tar.bz2&name=knp-4.17.tar.bz2"
     tar jxf knp-4.17.tar.bz2
-    cd /knp-4.17
+    cd knp-4.17
     ./configure && make  && make install
 else
     :
