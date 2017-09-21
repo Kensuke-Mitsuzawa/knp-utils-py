@@ -2,23 +2,23 @@
 ## flask package
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 ## typing
-from typing import List, Dict, Any, Union
+from typing import List, Dict, Any, Union, Tuple
 ## knp_utils
 from knp_utils import knp_job, models, db_handler
-## celery
-from celery import Celery
 ## to generate job-queue-id
 import uuid
-## to save job result
+## postgresql
+from psycopg2.extensions import connection, cursor
+from psycopg2.extras import RealDictCursor
+import psycopg2
 # else
 import pkg_resources
 import os
 import traceback
-import json
-import apsw
+from threading import Thread
 from datetime import datetime
 
-
+'''
 def make_celery(app):
     celery = Celery('app',
                     backend=app.config['CELERY_RESULT_BACKEND'],
@@ -32,9 +32,11 @@ def make_celery(app):
                 return TaskBase.__call__(self, *args, **kwargs)
     celery.Task = ContextTask
     return celery
+    '''
 
 
 flask_app = Flask(__name__)
+'''
 ############ You change following config depending on your app ############
 flask_app.config.from_object('config.DevelopmentConfig')
 flask_app.config.from_object('celeryconfig')
@@ -42,15 +44,25 @@ flask_app.config.update(
     CELERY_BROKER_URL='redis://localhost:6379',
     CELERY_RESULT_BACKEND='redis://localhost:6379')
 celery = make_celery(flask_app)
+'''
 
 ### Connect with backend DB
-path_backend_db = os.path.join(flask_app.config['PATH_WORKING_DIR'], flask_app.config['FILENAME_BACKEND_SQLITE3'])
-KNP_COMMAND=flask_app.config['KNP_COMMAND']
-JUMAN_COMMAND=flask_app.config['JUMAN_COMMAND']
-JUMANPP_SERVER_HOST=flask_app.config['JUMANPP_SERVER_HOST']
-JUMANPP_SERVER_PORT=flask_app.config['JUMANPP_SERVER_PORT']
+temporary_worker_db = os.path.join(flask_app.config['PATH_WORKING_DIR'], flask_app.config['FILENAME_BACKEND_SQLITE3'])
+# unix command path #
+KNP_COMMAND = flask_app.config['KNP_COMMAND']
+JUMAN_COMMAND = flask_app.config['JUMAN_COMMAND']
+JUMANPP_COMMAND = flask_app.config['JUMANPP_COMMAND']
+# psql connection #
+PSQL_HOST = flask_app.config['PSQL_HOST']
+PSQL_PORT = flask_app.config['PSQL_PORT']
+PSQL_USER = flask_app.config['PSQL_USER']
+PSQL_PASS = flask_app.config['PSQL_PASS']
+PSQL_DB = flask_app.config['PSQL_DB']
 
+#JUMANPP_SERVER_HOST=flask_app.config['JUMANPP_SERVER_HOST']
+#JUMANPP_SERVER_PORT=flask_app.config['JUMANPP_SERVER_PORT']
 
+'''
 @celery.task(bind=True)
 def knp_job_main(self,
                  input_document:List[Dict[str,Any]],
@@ -69,6 +81,152 @@ def knp_job_main(self,
             juman_server_host=JUMANPP_SERVER_HOST,
             juman_server_port=JUMANPP_SERVER_PORT,
             is_use_jumanpp=is_use_jumanpp)
+    else:
+        argument_param = models.Params(
+            n_jobs=n_jobs,
+            knp_command=KNP_COMMAND,
+            juman_command=JUMAN_COMMAND,
+            is_use_jumanpp=is_use_jumanpp)
+
+    keys_document = [doc_obj['text-id'] for doc_obj in input_document]
+    knp_job.main(seq_input_dict_document=input_document,
+                              argument_params=argument_param,
+                              work_dir=flask_app.config['PATH_WORKING_DIR'],
+                              file_name=flask_app.config['FILENAME_BACKEND_SQLITE3'],
+                              is_normalize_text=True,
+                              is_get_processed_doc=True,
+                              is_delete_working_db=False)
+    return {'status': 'completed',
+            'documents-keys': keys_document,
+            'started_at': started_at.strftime('%Y-%m-%d %H:%M:%S')}
+            '''
+
+TASK_STATUS = {
+    'PENDING': 'PENDING',
+    'FAILURE': 'FAILURE',
+    'PROGRESS': 'PROGRESS',
+    'DONE': 'DONE'
+}
+
+
+class PgBackendDbHandler(object):
+    def __init__(self, db_connection, table_knp_result='knp_result', table_task_status='task_status'):
+        # type: (connection, str, str)->None
+        self.db_connection = db_connection
+        self.table_knp_result = table_knp_result
+        self.table_task_status = table_task_status
+
+    def insert_task_status_record(self,
+                                  task_status=None,
+                                  description=None,
+                                  created_at=None,
+                                  updated_at=None):
+        """"""
+        # type: (str,str,datetime,datetime)->Tuple[bool,str]
+        sql_insert = "INSERT INTO {} (task_id, task_status, description, created_at, updated_at) VALUES (%s, %s, %s, %s, %s)".format(self.table_task_status)
+
+        task_id = str(uuid.uuid4())
+        if task_status is None:
+            task_status = TASK_STATUS['PENDING']
+
+        cur = self.db_connection.cursor()  # type: cursor
+        try:
+            cur.execute(sql_insert, (task_id, task_status, description, created_at, updated_at))
+            self.db_connection.commit()
+        except:
+            traceback_message = traceback.format_exc()
+            return False, traceback_message
+        else:
+            cur.close()
+            return True, task_id
+
+    def update_task_status_record(self,
+                                  task_id,
+                                  task_status,
+                                  description=None,
+                                  time_at=None):
+        """"""
+        # type: (str,str,str,datetime)->Union[bool,str]
+
+        sql_update = "UPDATE {} SET task_status=%s, description=%s, updated_at=%s WHERE task_id=%s".format(self.table_task_status)
+        cur = self.db_connection.cursor()  # type: cursor
+        if time_at is None:
+            time_at = datetime.now()
+
+        try:
+            cur.execute(sql_update, (task_status, description, time_at, task_id))
+            self.db_connection.commit()
+        except:
+            traceback_message = traceback.format_exc()
+            return traceback_message
+        else:
+            cur.close()
+            return True
+
+    def insert_knp_result_record(self,
+                                 task_id,
+                                 sent_id,
+                                 text_id,
+                                 knp_result,
+                                 status,
+                                 created_at):
+        """"""
+        # type: (str,str,str,str,bool,datetime)->Union[str,bool]
+        sql_insert = "INSERT INTO {} (sent_id,text_id,task_id,knp_result,status,created_at) VALUES (%s,%s,%s,%s,%s,%s)".format(self.table_knp_result)
+        cur = self.db_connection.cursor()  # type: cursor
+        try:
+            cur.execute(sql_insert, (sent_id, text_id, task_id, knp_result, status, created_at))
+            self.db_connection.commit()
+        except:
+            traceback_message = traceback.format_exc()
+            return traceback_message
+        else:
+            cur.close()
+            return True
+
+    def delete_knp_result_record(self, task_id):
+        """"""
+        # type: (str)->Union[str,bool]
+        sql_delete = "DELETE FROM {} WHERE task_id = %s".format(self.table_knp_result)
+        cur = self.db_connection.cursor()  # type: cursor
+        try:
+            cur.execute(sql_delete, (task_id,))
+            self.db_connection.commit()
+        except:
+            traceback_message = traceback.format_exc()
+            return traceback_message
+        else:
+            cur.close()
+            return True
+
+
+
+
+
+def init_psql_db_connection(psql_host=PSQL_HOST,
+                            psql_port=PSQL_PORT,
+                            psql_user=PSQL_USER,
+                            psql_pass=PSQL_PASS,
+                            psql_db=PSQL_DB):
+    # type: (str,int,str,str,str)->connection
+    return psycopg2.connect(database=psql_db, user=psql_user, password=psql_pass, host=psql_host, port=psql_port)
+
+
+
+def backend_job(backend_db_handler:PgBackendDbHandler,
+                input_document:List[Dict[str,Any]],
+                n_jobs:int,
+                is_use_jumanpp:bool):
+    """"""
+    started_at = datetime.now()
+
+    if is_use_jumanpp:
+        argument_param = models.Params(
+            knp_command=KNP_COMMAND,
+            juman_command=JUMANPP_COMMAND,
+            is_use_jumanpp=True,
+            process_mode=''
+        )
     else:
         argument_param = models.Params(
             n_jobs=n_jobs,
@@ -151,6 +309,7 @@ def run_knp_api():
         is_use_jumanpp = body_object['is_use_jumanpp']
         text_ids = [doc_obj['text-id'] for doc_obj in input_document]
 
+        # todo ここをタスク開始命令に変更
         task = knp_job_main.apply_async(args=[input_document, n_jobs, is_use_jumanpp])
         response_body = {'message': 'your job is started',
                          'text_ids': text_ids,
@@ -175,7 +334,7 @@ def get_result_api():
     try:
         body_object = request.get_json()
         seq_text_ids = body_object['text-ids']
-        handler = db_handler.Sqlite3Handler(path_sqlite_file=path_backend_db)
+        handler = db_handler.Sqlite3Handler(path_sqlite_file=temporary_worker_db)
         seq_document_object = [None] * len(seq_text_ids)
         for i, text_id in enumerate(seq_text_ids):
                 seq_document_object[i] = handler.get_one_record_sub_id(text_id).to_dict()

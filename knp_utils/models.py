@@ -225,7 +225,7 @@ class KnpSubProcess(object):
                  juman_server_host=None,
                  juman_server_port=None,
                  is_use_jumanpp=None,
-                 process_mode='pexpect',
+                 process_mode='everytime',
                  path_juman_rc=None,
                  eos_pattern="EOS"):
         """* Parameters
