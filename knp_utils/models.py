@@ -135,7 +135,7 @@ class UnixProcessHandler(object):
         - This function monitors time which takes for getting the result.
         """
         # type: (text_type)->text_type
-        input_encoded = input_string.encode('utf-8')
+        input_encoded = input_string
         self.process_analyzer.sendline(input_encoded)
         buffer = ""
         while True:

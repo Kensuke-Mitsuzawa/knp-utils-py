@@ -10,6 +10,7 @@ logger = logging.getLogger('command')
 #PATH_KNP_COMMAND="/usr/local/bin/knp"
 PATH_JUMAN_COMMAND="juman"
 PATH_KNP_COMMAND="knp"
+PATH_JUMANPP_COMMAND="jumanpp"
 
 
 def example_interface():
@@ -36,7 +37,7 @@ def example_interface():
                               is_split_text=True,
                               juman_command=PATH_JUMAN_COMMAND,  # Note: You can set jumanpp also (if it's available in your system)
                               knp_command=PATH_KNP_COMMAND,
-                              process_mode="everytime")
+                              process_mode="pexpect")
 
     import json
     logger.info(msg="--- example of parsed result ---")

@@ -2,11 +2,6 @@
 FROM continuumio/anaconda3
 MAINTAINER kensuke-mi <kensuke.mit@gmail.com>
 
-ENV REDIS_VERSION 3.2.8
-ENV REDIS_HOME /opt/redis
-RUN mkdir -p /opt
-RUN mkdir -p ${REDIS_HOME}
-
 ## apt-getで依存ライブラリのインストール
 RUN apt-get update
 RUN apt-get install -y software-properties-common wget --fix-missing
@@ -26,18 +21,21 @@ RUN apt-get install -y python-psycopg2 postgresql postgresql-contrib libpq-dev
 RUN apt-get install -y sqlite3
 RUN apt-get install -y vim wget lsof curl
 ## boost1.57
+RUN apt-get install -y build-essential g++ autotools-dev libicu-dev build-essential libbz2-dev
+RUN wget http://downloads.sourceforge.net/project/boost/boost/1.57.0/boost_1_57_0.tar.bz2
+RUN tar xvjf ./boost_1_57_0.tar.bz2 && cd boost_1_57_0 && ./bootstrap.sh --prefix=/opt/boost_1_57_0 && ./b2 && ./b2 install
 # Install Boost
-WORKDIR /tmp
-RUN curl -SL "http://downloads.sourceforge.net/project/boost/boost/1.62.0/boost_1_62_0.tar.bz2?r=https%3A%2F%2Fsourceforge.net%2Fprojects%2Fboost%2Ffiles%2Fboost%2F1.62.0%2F&ts=$(date +%s)&use_mirror=superb-sea2" \
-    -o boost_1_62_0.tar.bz2 \
-  && [ $(sha1sum boost_1_62_0.tar.bz2 | awk '{print $1}') == '5fd97433c3f859d8cbab1eaed4156d3068ae3648' ] \
-  && tar --bzip2 -xf boost_1_62_0.tar.bz2 \
-  && cd boost_1_62_0 \
-  && ./bootstrap.sh --prefix=/usr/local \
-  && ./b2 -a -sHAVE_ICU=1 \
-  && ./b2 install \
-  && cd .. \
-  && rm -rf boost_1_62_0.tar.bz2 boost_1_62_0
+#WORKDIR /tmp
+#RUN curl -SL "http://downloads.sourceforge.net/project/boost/boost/1.62.0/boost_1_62_0.tar.bz2?r=https%3A%2F%2Fsourceforge.net%2Fprojects%2Fboost%2Ffiles%2Fboost%2F1.62.0%2F&ts=$(date +%s)&use_mirror=superb-sea2" \
+#    -o boost_1_62_0.tar.bz2 \
+#  && [ $(sha1sum boost_1_62_0.tar.bz2 | awk '{print $1}') == '5fd97433c3f859d8cbab1eaed4156d3068ae3648' ] \
+#  && tar --bzip2 -xf boost_1_62_0.tar.bz2 \
+#  && cd boost_1_62_0 \
+#  && ./bootstrap.sh --prefix=/usr/local \
+#  && ./b2 -a -sHAVE_ICU=1 \
+#  && ./b2 install \
+#  && cd .. \
+#  && rm -rf boost_1_62_0.tar.bz2 boost_1_62_0
 
 ## libunwind
 #RUN apt-get install -y libunwind7-dev
@@ -100,7 +98,7 @@ RUN /etc/init.d/postgresql start && sleep 5 && psql postgres -f initialize_backe
 ## rootユーザーに戻す ##
 USER root
 
-EXPOSE 6379
+EXPOSE 5432
 EXPOSE 5000
 WORKDIR /codes/knp-utils 
 CMD ["/bin/bash", "start_web_server.sh"]
