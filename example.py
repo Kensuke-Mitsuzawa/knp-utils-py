@@ -117,7 +117,7 @@ def performance_comparison():
     else:
         start = time.time()
         from pyknp import KNP
-        knp_obj = KNP(command=PATH_KNP_COMMAND, jumancommand=PATH_JUMAN_COMMAND)
+        knp_obj = KNP(command=PATH_KNP_COMMAND, jumancommand=PATH_JUMAN_COMMAND, jumanpp=True)
         for document_obj in input_document:
             knp_obj.knp(sentence=knp_job.func_normalize_text(document_obj['text']))
         elapsed_time = time.time() - start
