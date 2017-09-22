@@ -3,7 +3,7 @@ MAINTAINER kensuke-mi <kensuke.mit@gmail.com>
 
 ENV JUMANPP_SOURCE_URL http://lotus.kuee.kyoto-u.ac.jp/nl-resource/jumanpp/jumanpp-1.02.tar.xz
 ENV JUMAN_SOURCE_URL http://nlp.ist.i.kyoto-u.ac.jp/nl-resource/juman/juman-7.01.tar.bz2
-ENV KNP_SOURCE_URL http://nlp.ist.i.kyoto-u.ac.jp/nl-resource/knp/knp-4.16.tar.bz2
+ENV KNP_SOURCE_URL http://nlp.ist.i.kyoto-u.ac.jp/nl-resource/knp/knp-4.17.tar.bz2
 
 ENV PATH=/opt/conda/bin:$PATH \
     LANG=C.UTF-8 \
