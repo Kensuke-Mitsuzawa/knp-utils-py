@@ -53,6 +53,7 @@ RUN tar Jxfv jumanpp-1.02.tar.xz
 RUN cd jumanpp-1.02 && ./configure && make && make install
 WORKDIR /tmp
 RUN rm -rf jumanpp-1.02 jumanpp-1.02.tar.xz
+RUN echo "私はさくらまなの作品が好きです。" | jumanpp
 
 ## KNP
 WORKDIR /tmp
@@ -61,7 +62,9 @@ WORKDIR /tmp
 RUN wget ${KNP_SOURCE_URL}
 RUN tar xfj knp-4.16.tar.bz2
 RUN cd cd /knp-4.16 && ./configure && make && make install
-RUN cd .. \ && rm knp-4.16.tar.bz2 && rm -rf knp-4.16
+RUN cd ../ && rm knp-4.16.tar.bz2 && rm -rf knp-4.16
+RUN echo "私はさくらまなの作品が好きです。" | jumanpp | knp
+
 
 ### -------------------------------------------------------------------------------------------
 ### Install python packages
