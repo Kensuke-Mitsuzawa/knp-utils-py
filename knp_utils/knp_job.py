@@ -129,6 +129,87 @@ def __check_dict_document(dict_object):
     return True
 
 
+def split_sentence(text):
+    """* What you can do
+    - 文分割を実施する
+    * Output
+    - (文番号,分割済みテキスト)のタプル
+    """
+    # type: (str)->List[Tuple[int,str]]
+    eos_pattern = re.compile("(?P<mark>[。|！|？|\u2753|\u2757|\u2049|\n]+)")
+    particle_pattern = re.compile("(?P<mark>[！|？|\u2753|\u2757|\u2049]+)[$$]+(?P<particle>[が|を|に|と|の|で|や|って])")
+    bracket_pattern = re.compile("(?P<quote>「.*?」|『.*?』|（.*?）)")
+    start_mark_pattern = re.compile("(?P<mark>[\u2010-\u266F])")
+    break_pattern = re.compile("[$$]+")
+
+    # 改行の削除
+    # ただし、読点が投稿中に含まれない場合には、改行を文区切りとみなす
+    if "。" not in text:
+        pass
+    else:
+        text = text.replace("\n", "")
+
+    # 文末と判断できる場合すべてに、区切り文字'$$'を挿入する
+    # ただし、投稿の最後にもつけると空文ができるので、最後はrstripで落とす
+    text = eos_pattern.sub("\g<mark>$$", text).rstrip("$")
+
+    # 助詞（らしき文字列）が続く区切り文字を削除
+    # 「じゃらんのアプリの勧誘？がウザい。」のような場合に区切らないため
+    text = particle_pattern.sub("\g<mark>\g<particle>", text)
+
+    # カッコ内に含まれる区切り文字を削除
+    repl_func = lambda match_obj: match_obj.group("quote").replace("$$", "")
+    text = bracket_pattern.sub(repl_func, text)
+
+    # 記号ではじまる投稿は、箇条書き形式の場合であると仮定し、その記号の前にも区切り文字を挿入する
+    if start_mark_pattern.match(text):
+        text = start_mark_pattern.sub("$$\g<mark>", text).lstrip("$$")
+
+    # 最終的に残った区切り文字で分割
+    return [(sent_id, sentence.strip()) for sent_id, sentence in enumerate(break_pattern.split(text))]
+
+
+def generate_record_data_model_obj(seq_input_obj,
+                                   is_split_sentence):
+    """* What you can do
+    - 入力データをオブジェクト化してしまう。
+    - 文単位管理の可能性があるので、不満用とオブジェクトと同じものを使う
+    """
+    # type: (List[Dict[str,Any]], bool)->List[DocumentObject]
+    seq_record_data_model = []
+    record_id = 0
+    for dict_document in seq_input_obj:
+        __check_dict_document(dict_document)
+        # ===========================================================================================================
+        if is_split_sentence:
+            """文分割の実施"""
+            for tuple_sentid_text in split_sentence(dict_document['text']):
+                sentence, sentence_index = tuple_sentid_text[1], tuple_sentid_text[0]
+                record_data_model = DocumentObject(
+                    record_id=record_id,
+                    text=sentence,
+                    status=False,
+                    parsed_result=None,
+                    sub_id=dict_document['text-id'],
+                    sentence_index=sentence_index)
+                seq_record_data_model.append(record_data_model)
+                record_id += 1
+        else:
+            """文分割は実施しない"""
+            record_data_model = DocumentObject(
+            record_id=record_id,
+            text=dict_document['text'],
+            status=False,
+            parsed_result=None,
+            sub_id=dict_document['text-id'])
+
+            seq_record_data_model.append(record_data_model)
+            record_id += 1
+        # ===========================================================================================================
+    return seq_record_data_model
+
+
+
 def generate_document_objects(seq_input_dict_document):
     """* What you can do
     """
@@ -154,10 +235,11 @@ def main(seq_input_dict_document,
          knp_command='/usr/local/bin/knp',
          juman_command='/usr/local/bin/juman',
          path_juman_rc=None,
-         process_mode='pexpect',
+         process_mode='everytime',
          is_get_processed_doc=True,
          is_delete_working_db=True,
          is_normalize_text=False,
+         is_split_text=False,
          func_normalization=func_normalize_text):
     """*What you can do
     -
@@ -185,12 +267,15 @@ def main(seq_input_dict_document,
         - Boolean flag if you get processed document or Not. KNP result string tends to be super big. So, if you put a lot of document, I strongly recomment to put is_get_processed_doc == False.
          And use Sqlite3Handler(path_sqlite_file=path_working_db).get_record(is_use_generator=True).
     """
-    # type: (List[Dict[str,Any]],int,text_type,text_type,text_type,text_type,text_type,text_type,bool,bool,bool,Callable[[text_type],text_type])->ResultObject
+    # type: (List[Dict[str,Any]],int,text_type,text_type,text_type,text_type,text_type,text_type,bool,bool,bool,bool,Callable[[text_type],text_type])->ResultObject
     if is_delete_working_db and is_get_processed_doc == False:
         raise Exception('Nothing is return object when is_delete_working_db = True and is_get_processed_doc = False')
 
     path_working_db = os.path.join(work_dir, file_name)
-    seq_doc_obj = generate_document_objects(seq_input_dict_document)
+    if is_split_text:
+        seq_doc_obj = generate_record_data_model_obj(seq_input_dict_document, is_split_sentence=True)
+    else:
+        seq_doc_obj = generate_document_objects(seq_input_dict_document)
     # insert object into backendDB #
     initialize_text_db(seq_document_obj=seq_doc_obj, work_dir=work_dir, file_name=file_name)
     # Run KNP analysis in parallel #

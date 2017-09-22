@@ -6,12 +6,13 @@ CREATE USER docker PASSWORD 'docker' ;
 
 /* a table to save knp analysis result */
 create table knp_result (
-    sent_id varchar(32) primary key,
-    text_id INTEGER,
+    text_id varchar(64),
+    sentence_index  integer,
     task_id varchar(64),
     knp_result TEXT,
     status BOOLEAN,
-    created_at  timestamp with time zone    not null    DEFAULT now()
+    created_at  timestamp with time zone    not null    DEFAULT now(),
+    PRIMARY KEY (text_id, sentence_index, task_id)
     );
 CREATE INDEX idx_knp_result_01 ON knp_result (text_id);
 CREATE INDEX idx_knp_result_02 ON knp_result (task_id);

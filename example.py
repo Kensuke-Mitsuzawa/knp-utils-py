@@ -33,9 +33,10 @@ def example_interface():
                               n_jobs=-1,
                               is_normalize_text=True,
                               is_get_processed_doc=True,
+                              is_split_text=True,
                               juman_command=PATH_JUMAN_COMMAND,  # Note: You can set jumanpp also (if it's available in your system)
                               knp_command=PATH_KNP_COMMAND,
-                              process_mode="pexpect")
+                              process_mode="everytime")
 
     import json
     logger.info(msg="--- example of parsed result ---")
@@ -123,5 +124,5 @@ def performance_comparison():
 
 
 if __name__=='__main__':
-    performance_comparison()
     example_interface()
+    performance_comparison()
