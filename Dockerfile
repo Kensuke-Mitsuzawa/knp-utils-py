@@ -60,9 +60,9 @@ WORKDIR /tmp
 ### -------------------------------------------------------------------------------------------
 ### 一般公開向けKNP-4.16を利用する場合は下のコード
 RUN wget ${KNP_SOURCE_URL}
-RUN tar xfj knp-4.16.tar.bz2
-RUN cd cd /knp-4.16 && ./configure && make && make install
-RUN cd ../ && rm knp-4.16.tar.bz2 && rm -rf knp-4.16
+RUN tar xfj knp-4.17.tar.bz2
+RUN cd cd /knp-4.17 && ./configure && make && make install
+RUN cd ../ && rm knp-4.17.tar.bz2 && rm -rf knp-4.17
 RUN echo "私はさくらまなの作品が好きです。" | jumanpp | knp
 
 
