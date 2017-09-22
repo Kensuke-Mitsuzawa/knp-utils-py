@@ -42,6 +42,7 @@ WORKDIR /tmp
 RUN wget ${JUMAN_SOURCE_URL} -O juman-source.tar.bz2
 RUN tar xfj juman-source.tar.bz2
 RUN cd juman-7.01 && ./configure && make && make install
+WORKDIR /tmp
 RUN rm juman-source.tar.bz2
 RUN rm -rf juman-7.01
 RUN echo "私はさくらまなの作品が好きです。" | juman
@@ -49,25 +50,18 @@ RUN echo "私はさくらまなの作品が好きです。" | juman
 ## Juman++
 RUN wget ${JUMANPP_SOURCE_URL}
 RUN tar Jxfv jumanpp-1.02.tar.xz
-RUN mv jumanpp-* jumanpp-source
-RUN cd jumanpp-source
-RUN ./configure && make && make install
-RUN cd ../ && rm -rf jumanpp-source
+RUN cd jumanpp-1.02 && ./configure && make && make install
+WORKDIR /tmp
+RUN rm -rf jumanpp-1.02 jumanpp-1.02.tar.xz
 
 ## KNP
 WORKDIR /tmp
 ### -------------------------------------------------------------------------------------------
 ### 一般公開向けKNP-4.16を利用する場合は下のコード
-RUN wget -q ${KNP_SOURCE_URL} -O knp-source.tar.bz2 \
-    && tar xfj knp-source.tar.bz2 \
-    && mv knp-* knp-source \
-    && cd knp-source/ \
-    && ./configure \
-    && make \
-    && make install \
-    && cd .. \
-    && rm knp-source.tar.xz \
-    && rm -rf knp-source
+RUN wget ${KNP_SOURCE_URL}
+RUN tar xfj knp-4.16.tar.bz2
+RUN cd cd /knp-4.16 && ./configure && make && make install
+RUN cd .. \ && rm knp-4.16.tar.bz2 && rm -rf knp-4.16
 
 ### -------------------------------------------------------------------------------------------
 ### Install python packages
