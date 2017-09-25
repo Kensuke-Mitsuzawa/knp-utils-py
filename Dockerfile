@@ -78,7 +78,7 @@ RUN cd /codes/knp-utils && python setup.py install
 
 ## Web appのバックエンドDBの作成 ##
 RUN mkdir /var/lib/postgresql/data
-RUN mkdir /run/postgresql
+RUN mkdir /run/postgresql && chmod 777 /run/postgresql
 ENV PGDATA /var/lib/postgresql/data
 ENV PGRUN /run/postgresql
 ENV authMethod md5
@@ -94,14 +94,14 @@ RUN pass="PASSWORD '$POSTGRES_DOCKER_PASSWORD'" && authMethod=md5
 
 RUN createSql="CREATE DATABASE $POSTGRES_DB;"
 RUN echo $createSql | gosu postgres postgres --single -jE  && echo
-RUN userSql="CREATE USER $POSTGRES_DOCKER_USER WITH SUPERUSER PASSWORD $POSTGRES_DOCKER_PASSWORD;" && \
+RUN userSql="CREATE USER $POSTGRES_DOCKER_USER WITH SUPERUSER PASSWORD '${POSTGRES_DOCKER_PASSWORD}';" && \
 echo $userSql | gosu postgres postgres --single -jE && \
 echo
 ### テーブルの初期化
 WORKDIR /codes/knp-utils/web_api
 RUN gosu postgres pg_ctl -D "$PGDATA" -o "-c listen_addresses='*'" -w start && \
 sleep 3 && \
-psql postgres -f initialize_backend_db.sql && \
+psql postgres -U ${POSTGRES_DOCKER_USER} -h localhost -f initialize_backend_db.sql && \
 gosu postgres pg_ctl -D "$PGDATA" -m fast -w stop
 RUN { echo; echo "host all all 0.0.0.0/0 $authMethod"; } >> "$PGDATA"/pg_hba.conf
 
