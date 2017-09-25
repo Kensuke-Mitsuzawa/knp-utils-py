@@ -501,20 +501,29 @@ class DocumentObject(object):
         # type: (int,text_type,bool,Union[None,str],bool,str,int,datetime,datetime) -> None
 
         if six.PY2:
-            if isinstance(text, str):
-                self.text = text.decode('utf-8')
-            else:
-                self.text = text
+            try:
+                if isinstance(text, str):
+                    self.text = text.decode('utf-8')
+                else:
+                    self.text = text
+            except UnicodeDecodeError:
+                logger.error(traceback.format_exc())
 
-            if isinstance(sub_id, str):
-                self.sub_id = sub_id.decode('utf-8')
-            else:
-                self.sub_id = sub_id
+            try:
+                if isinstance(sub_id, str):
+                    self.sub_id = sub_id.decode('utf-8')
+                else:
+                    self.sub_id = sub_id
+            except UnicodeDecodeError:
+                logger.error(traceback.format_exc())
 
-            if isinstance(parsed_result, str):
-                self.parsed_result = parsed_result.decode('utf-8')
-            else:
-                self.parsed_result = parsed_result
+            try:
+                if isinstance(parsed_result, str):
+                    self.parsed_result = parsed_result.decode('utf-8')
+                else:
+                    self.parsed_result = parsed_result
+            except UnicodeDecodeError:
+                logger.error(traceback.format_exc())
         else:
             self.text = text
             self.sub_id = sub_id

@@ -131,13 +131,18 @@ class Sqlite3Handler(DbHandler):
         """
         # type: (DocumentObject)->bool
 
-        sql_update = "UPDATE {} SET status=?, is_success=?, parsed_result= ?  WHERE record_id = ?".format(self.table_name_text)
+        sql_update = "UPDATE {} SET status=?, is_success=?, parsed_result=? WHERE record_id = ?".format(self.table_name_text)
         is_success = False
         i = 0
         while is_success == False:
             try:
+                if six.PY2 and isinstance(document_obj.parsed_result, six.text_type):
+                    parsed_result = document_obj.parsed_result.encode('utf-8')
+                else:
+                    parsed_result = document_obj.parsed_result
+
                 cur = self.db_connection.cursor()
-                cur.execute(sql_update, (True, document_obj.is_success, document_obj.parsed_result, document_obj.record_id,))
+                cur.execute(sql_update, (True, document_obj.is_success, parsed_result, document_obj.record_id,))
                 self.db_connection.commit()
                 cur.close()
             except:
