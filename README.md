@@ -133,6 +133,11 @@ python knp_utils.py -i ./tests/resources/input_sample.json
 
 # Web-app & Docker container
 
+This repository has Web application also (Docker + Flask).
+You can try and use this package as independent web application system easily.
+
+You're supposed to setup docker system beforehand to deploy the web application in your environment.
+
 ## build image
 
 ```

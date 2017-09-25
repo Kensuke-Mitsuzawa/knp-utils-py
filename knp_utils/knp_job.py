@@ -220,6 +220,7 @@ def generate_document_objects(seq_input_dict_document):
 
         seq_document_obj.append(DocumentObject(
             record_id=index_id,
+            sentence_index=0,
             text=dict_document['text'],
             status=False,
             parsed_result=None,

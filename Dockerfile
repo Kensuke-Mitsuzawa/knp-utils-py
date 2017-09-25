@@ -68,10 +68,8 @@ WORKDIR /opt
 RUN wget "http://nlp.ist.i.kyoto-u.ac.jp/DLcounter/lime.cgi?down=http://lotus.kuee.kyoto-u.ac.jp/nl-resource/pyknp/pyknp-0.3.tar.gz&name=pyknp-0.3.tar.gz" -O pyknp-0.3.tar.gz
 RUN tar -xvf pyknp-0.3.tar.gz && cd pyknp-0.3 && python setup.py install
 ## Pythonパッケージのインストール
-RUN conda install -y psycopg2 pymongo redis sqlalchemy numpy scipy pandas
+RUN conda install -y psycopg2 pymongo redis sqlalchemy numpy scipy pandas flask scikit-learn cython
 RUN pip install jaconv
-## Install packages for python with conda
-RUN conda install -y numpy scipy scikit-learn cython psycopg2
 
 ### コード配置用のディレクトリ
 RUN mkdir /codes
@@ -83,6 +81,7 @@ RUN mkdir /var/lib/postgresql/data
 RUN mkdir /run/postgresql
 ENV PGDATA /var/lib/postgresql/data
 ENV PGRUN /run/postgresql
+ENV authMethod md5
 ENV POSTGRES_DB postgres
 ENV POSTGRES_DOCKER_USER docker
 ENV POSTGRES_DOCKER_PASSWORD docker
@@ -95,18 +94,18 @@ RUN pass="PASSWORD '$POSTGRES_DOCKER_PASSWORD'" && authMethod=md5
 
 RUN createSql="CREATE DATABASE $POSTGRES_DB;"
 RUN echo $createSql | gosu postgres postgres --single -jE  && echo
-RUN userSql="CREATE USER $POSTGRES_DOCKER_USER WITH SUPERUSER $POSTGRES_DOCKER_PASSWORD;" && \
+RUN userSql="CREATE USER $POSTGRES_DOCKER_USER WITH SUPERUSER PASSWORD $POSTGRES_DOCKER_PASSWORD;" && \
 echo $userSql | gosu postgres postgres --single -jE && \
 echo
-RUN gosu postgres pg_ctl -D "$PGDATA" -o "-c listen_addresses=''" -w start
 ### テーブルの初期化
 WORKDIR /codes/knp-utils/web_api
-RUN psql postgres -f initialize_backend_db.sql
-
-RUN gosu postgres pg_ctl -D "$PGDATA" -m fast -w stop
+RUN gosu postgres pg_ctl -D "$PGDATA" -o "-c listen_addresses='*'" -w start && \
+sleep 3 && \
+psql postgres -f initialize_backend_db.sql && \
+gosu postgres pg_ctl -D "$PGDATA" -m fast -w stop
 RUN { echo; echo "host all all 0.0.0.0/0 $authMethod"; } >> "$PGDATA"/pg_hba.conf
 
 EXPOSE 5432
 EXPOSE 5000
 WORKDIR /codes/knp-utils
-CMD ["/bin/bash", "start_web_server.sh"]
+CMD ["/bin/bash", "docker_start_web_server.sh"]

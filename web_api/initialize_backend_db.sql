@@ -7,9 +7,9 @@ CREATE USER docker PASSWORD 'docker' ;
 /* a table to save knp analysis result */
 create table knp_result (
     text_id varchar(64),
-    sentence_index  integer,
+    sentence_index  integer DEFAULT null,
     task_id varchar(64),
-    knp_result TEXT,
+    knp_result TEXT DEFAULT null,
     status BOOLEAN,
     created_at  timestamp with time zone    not null    DEFAULT now(),
     PRIMARY KEY (text_id, sentence_index, task_id)
@@ -24,8 +24,8 @@ GRANT ALL ON TABLE public.knp_result TO docker;
 /* a tbale to manage task status */
 create table task_status(
     task_id varchar(64)    primary key,
-    task_status  varchar(32),
-    description varchar(128),
+    task_status  varchar(32)    DEFAULT null,
+    description varchar(128)    DEFAULT null,
     created_at  timestamp with time zone    not null    DEFAULT now(),
     updated_at  timestamp with time zone    not null    DEFAULT now()
 );

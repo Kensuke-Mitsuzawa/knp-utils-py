@@ -42,7 +42,6 @@ TASK_STATUS = {
     'DONE': 'DONE'
 }
 
-
 class PgBackendDbHandler(object):
     def __init__(self, db_connection, table_knp_result='knp_result', table_task_status='task_status'):
         # type: (connection, str, str)->None
@@ -418,4 +417,12 @@ def get_result_api(task_id:str):
 
 if __name__ == '__main__':
     flask_app.debug = True # デバッグモード有効化
+    try:
+        check_db_connection = init_psql_db_connection()
+        check_backend_handler = PgBackendDbHandler(check_db_connection)
+    except:
+        flask_app.logger.error("Failed to initialize connection into backend DB.")
+        raise Exception("Failed to initialize connection into backend DB.")
+
     flask_app.run(host='0.0.0.0') # どこからでもアクセス可能に
+
