@@ -86,6 +86,7 @@ class Sqlite3Handler(DbHandler):
         status BOOLEAN,
         is_success BOOLEAN,
         sub_id TEXT,
+        sentence_index  INTEGER,
         created_at DATETIME,
         updated_at DATETIME)"""
         cur.execute(sql.format(table_name=self.table_name_text))
@@ -104,8 +105,8 @@ class Sqlite3Handler(DbHandler):
             cur.close()
             return False
         else:
-            sql_insert = """INSERT INTO {}(record_id, text, parsed_result, status, is_success, sub_id, created_at, updated_at)
-            values (?, ?, ?, ?, ?, ?, ?, ?)""".format(self.table_name_text)
+            sql_insert = """INSERT INTO {}(record_id, text, parsed_result, status, is_success, sub_id, sentence_index, created_at, updated_at)
+            values (?, ?, ?, ?, ?, ?, ?, ?, ?)""".format(self.table_name_text)
             cur = self.db_connection.cursor()
             try:
                 cur.execute(sql_insert, (document_obj.record_id,
@@ -114,6 +115,7 @@ class Sqlite3Handler(DbHandler):
                                          document_obj.status,
                                          document_obj.is_success,
                                          document_obj.sub_id,
+                                         document_obj.sentence_index,
                                          document_obj.timestamp,
                                          document_obj.updated_at))
                 self.db_connection.commit()
@@ -129,13 +131,18 @@ class Sqlite3Handler(DbHandler):
         """
         # type: (DocumentObject)->bool
 
-        sql_update = u"UPDATE {} SET status=?, parsed_result= ?  WHERE record_id = ?".format(self.table_name_text)
+        sql_update = "UPDATE {} SET status=?, is_success=?, parsed_result=? WHERE record_id = ?".format(self.table_name_text)
         is_success = False
         i = 0
         while is_success == False:
             try:
+                if six.PY2 and isinstance(document_obj.parsed_result, six.text_type):
+                    parsed_result = document_obj.parsed_result.encode('utf-8')
+                else:
+                    parsed_result = document_obj.parsed_result
+
                 cur = self.db_connection.cursor()
-                cur.execute(sql_update, (True, document_obj.parsed_result, document_obj.record_id,))
+                cur.execute(sql_update, (True, document_obj.is_success, parsed_result, document_obj.record_id,))
                 self.db_connection.commit()
                 cur.close()
             except:
@@ -157,7 +164,7 @@ class Sqlite3Handler(DbHandler):
     def get_one_record(self, record_id):
         """"""
         # type: (int)->Union[bool,DocumentObject]
-        sql_ = "SELECT record_id, text, parsed_result, status, is_success, sub_id, created_at, updated_at FROM {} WHERE record_id = ?".format(self.table_name_text)
+        sql_ = "SELECT record_id, text, parsed_result, status, is_success, sub_id, sentence_index, created_at, updated_at FROM {} WHERE record_id = ?".format(self.table_name_text)
 
         is_success = False
         i = 0
@@ -188,13 +195,14 @@ class Sqlite3Handler(DbHandler):
             status=fetched_record[3],
             is_success=fetched_record[4],
             sub_id=fetched_record[5],
-            timestamp=fetched_record[6],
-            updated_at=fetched_record[7])
+            sentence_index=fetched_record[6],
+            timestamp=fetched_record[7],
+            updated_at=fetched_record[8])
 
     def get_one_record_sub_id(self, sub_id):
         """"""
         # type: (int)->DocumentObject
-        sql_ = """SELECT record_id, text, parsed_result, status, is_success, sub_id, created_at, updated_at
+        sql_ = """SELECT record_id, text, parsed_result, status, is_success, sub_id, sentence_index, created_at, updated_at
         FROM {} WHERE sub_id = ?""".format(self.table_name_text)
 
         is_success = False
@@ -228,13 +236,14 @@ class Sqlite3Handler(DbHandler):
                 status=fetched_record[3],
                 is_success=fetched_record[4],
                 sub_id=fetched_record[5],
-                timestamp=fetched_record[6],
-                updated_at=fetched_record[7])
+                sentence_index=fetched_record[6],
+                timestamp=fetched_record[7],
+                updated_at=fetched_record[8])
 
     def get_record(self, is_use_generator=False):
         """"""
         # type: (bool)->Union[Iterable[DocumentObject]], List[DocumentObject]
-        sql_ = """SELECT record_id, text, parsed_result, status, is_success, sub_id, created_at, updated_at
+        sql_ = """SELECT record_id, text, parsed_result, status, is_success, sub_id, sentence_index, created_at, updated_at
         FROM {}""".format(self.table_name_text)
 
         cur = self.db_connection.cursor()
@@ -246,11 +255,12 @@ class Sqlite3Handler(DbHandler):
                     record_id=record_tuple[0],
                     text=record_tuple[1],
                     parsed_result=record_tuple[2],
-                    status=record_tuple[3],
-                    is_success=record_tuple[4],
+                    status=bool(record_tuple[3]),
+                    is_success=bool(record_tuple[4]),
                     sub_id=record_tuple[5],
-                    timestamp=record_tuple[6],
-                    updated_at=record_tuple[7]
+                    sentence_index=record_tuple[6],
+                    timestamp=record_tuple[7],
+                    updated_at=record_tuple[8]
                 ) for record_tuple in cur)
         else:
             if six.PY2:
@@ -261,11 +271,12 @@ class Sqlite3Handler(DbHandler):
                     record_id=record_tuple[0],
                     text=record_tuple[1],
                     parsed_result=record_tuple[2],
-                    status=record_tuple[3],
-                    is_success=record_tuple[4],
+                    status=bool(record_tuple[3]),
+                    is_success=bool(record_tuple[4]),
                     sub_id=record_tuple[5],
-                    timestamp=record_tuple[6],
-                    updated_at=record_tuple[7]
+                    sentence_index=record_tuple[6],
+                    timestamp=record_tuple[7],
+                    updated_at=record_tuple[8]
                 ) for record_tuple in cur]
 
         return seq_urls

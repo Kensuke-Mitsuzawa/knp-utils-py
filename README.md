@@ -30,9 +30,9 @@ NOTE: Time to process 40 documents at my environment(MacBook Pro Early2015)
 ### Juman & KNP
 
 ```
-pexpect mode, finished with :44.13979196548462[sec]
-everytime mode, finished with :38.31942701339722[sec]
-pyknp, finished with :64.74086809158325[sec]
+pexpect mode, finished with :31.958861112594604[sec]
+everytime mode, finished with :38.74405288696289[sec]
+pyknp, finished with :66.52731990814209[sec]
 ```
 
 ### Juman++ & KNP
@@ -45,9 +45,9 @@ This is because `pexpect` mode keeps a process running in one thread. Juman++ ta
 Therefore, `everytime` or `pyknp` takes long time than `pexpect`.
 
 ```
-pexpect mode, finished with :48.096940994262695[sec]
-everytime mode, finished with :64.07872700691223[sec]
-pyknp, finished with : 602.032340992232452[sec]
+pexpect mode, finished with :39.498690128326416[sec]
+everytime mode, finished with :48.86432194709778[sec]
+pyknp, finished with :65.67972993850708[sec]
 ```
 
 
@@ -133,6 +133,11 @@ python knp_utils.py -i ./tests/resources/input_sample.json
 ```
 
 # Web-app & Docker container
+
+This repository has Web application also (Docker + Flask).
+You can try and use this package as independent web application system easily.
+
+You're supposed to setup docker system beforehand to deploy the web application in your environment.
 
 ## build image
 

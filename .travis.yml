@@ -37,7 +37,6 @@ install:
   - pip install coveralls coverage nose
 script:
   - coverage run --source=knp_utils setup.py test
-  - python example.py
 after_success:
   - coveralls
 notifications:

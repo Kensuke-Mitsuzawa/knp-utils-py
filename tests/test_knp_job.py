@@ -96,7 +96,9 @@ class TestCore(unittest.TestCase):
 
         result_obj = knp_job.main(
             seq_input_dict_document=seq_long_test_input,
-            is_normalize_text=True)
+            is_normalize_text=True,
+            n_jobs=-1
+        )
         self.assertTrue(len(result_obj.seq_document_obj) == len(seq_long_test_input))
 
     def test_stress_test_pattern2(self):

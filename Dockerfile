@@ -1,102 +1,111 @@
-# Anaconda3 python distributionをベースContainerに利用
-FROM continuumio/anaconda3
+FROM frolvlad/alpine-glibc:alpine-3.6
 MAINTAINER kensuke-mi <kensuke.mit@gmail.com>
 
-ENV REDIS_VERSION 3.2.8
-ENV REDIS_HOME /opt/redis
-RUN mkdir -p /opt
-RUN mkdir -p ${REDIS_HOME}
+ENV JUMANPP_SOURCE_URL http://lotus.kuee.kyoto-u.ac.jp/nl-resource/jumanpp/jumanpp-1.02.tar.xz
+ENV JUMAN_SOURCE_URL http://nlp.ist.i.kyoto-u.ac.jp/nl-resource/juman/juman-7.01.tar.bz2
+ENV KNP_SOURCE_URL http://nlp.ist.i.kyoto-u.ac.jp/nl-resource/knp/knp-4.17.tar.bz2
 
-## apt-getで依存ライブラリのインストール
-RUN apt-get update
-RUN apt-get install -y software-properties-common wget --fix-missing
-#RUN add-apt-repository ppa:ubuntu-toolchain-r/test
-RUN apt-get update
+ENV PATH=/opt/conda/bin:$PATH \
+    LANG=C.UTF-8 \
+    MINICONDA=Miniconda3-latest-Linux-x86_64.sh
+# apk update
+RUN apk update
 
-### gccのインストール
-RUN apt-get install -y make --fix-missing
-#RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 1
-RUN apt-get install -y gcc --fix-missing
-RUN apt-get install -y g++ --fix-missing
-RUN apt-get install -y gcc-4.9 g++-4.9
-RUN apt-get install -y swig2.0 --fix-missing
-RUN apt-get install -y zlib1g-dev
-### DB郡のインストール
-RUN apt-get install -y sqlite3
-RUN apt-get install -y vim wget lsof curl
-## boost1.57
-# Install Boost
+# Python
+RUN apk add --no-cache bash wget && \
+    wget -q --no-check-certificate https://repo.continuum.io/miniconda/$MINICONDA && \
+    bash /Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda && \
+    ln -s /opt/conda/bin/* /usr/local/bin/ && \
+    rm -rf /root/.[acpw]* /$MINICONDA /opt/conda/pkgs/*
+# general
+RUN apk --no-cache add vim wget lsof curl bash swig gcc build-base make python-dev py-pip jpeg-dev zlib-dev
+ENV LIBRARY_PATH=/lib:/usr/lib
+# DB系システム
+RUN apk --no-cache add sqlite
+RUN apk --update add postgresql openssl && \
+rm -f /var/cache/apk/* &&  \
+wget --no-check-certificate  -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/1.4/gosu-amd64" &&  \
+chmod +x /usr/local/bin/gosu &&  \
+echo "Success"
+
+# boost
+RUN apk --no-cache add boost-dev
+
+# directory
 WORKDIR /tmp
-#RUN curl -SL "http://downloads.sourceforge.net/project/boost/boost/1.62.0/boost_1_62_0.tar.bz2?r=https%3A%2F%2Fsourceforge.net%2Fprojects%2Fboost%2Ffiles%2Fboost%2F1.62.0%2F&ts=$(date +%s)&use_mirror=superb-sea2" \
-#    -o boost_1_62_0.tar.bz2 \
-#  && [ $(sha1sum boost_1_62_0.tar.bz2 | awk '{print $1}') == '5fd97433c3f859d8cbab1eaed4156d3068ae3648' ] \
-#  && tar --bzip2 -xf boost_1_62_0.tar.bz2 \
-#  && cd boost_1_62_0 \
-#  && ./bootstrap.sh --prefix=/usr/local \
-#  && ./b2 -a -sHAVE_ICU=1 \
-#  && ./b2 install \
-#  && cd .. \
-#  && rm -rf boost_1_62_0.tar.bz2 boost_1_62_0
-
-## libunwind
-#RUN apt-get install -y libunwind7-dev
-### gperftools
-#RUN mkdir -p /deps/gperftools
-#RUN cd /deps; git clone "https://code.google.com/p/gperftools/"
-#RUN cd /deps/gperftools;  git checkout gperftools-2.1; ./autogen.sh; ./configure --prefix=/usr; make; make install
 
 ## Juman
-RUN apt-get install -y libcdb-dev libjuman
-RUN wget "http://nlp.ist.i.kyoto-u.ac.jp/DLcounter/lime.cgi?down=http://nlp.ist.i.kyoto-u.ac.jp/nl-resource/juman/juman-7.01.tar.bz2&name=juman-7.01.tar.bz2" -O juman-7.01.tar.bz2
-RUN tar jxf juman-7.01.tar.bz2
-WORKDIR /tmp/juman-7.01/
-RUN ./configure && make  && make install
-RUN apt-get -y install juman
-RUN echo "これはテストの文です。" | juman
+RUN wget ${JUMAN_SOURCE_URL} -O juman-source.tar.bz2
+RUN tar xfj juman-source.tar.bz2
+RUN cd juman-7.01 && ./configure && make && make install
+WORKDIR /tmp
+RUN rm juman-source.tar.bz2
+RUN rm -rf juman-7.01
+RUN echo "私はさくらまなの作品が好きです。" | juman
 
 ## Juman++
-#RUN wget "http://nlp.ist.i.kyoto-u.ac.jp/DLcounter/lime.cgi?down=http://lotus.kuee.kyoto-u.ac.jp/nl-resource/jumanpp/jumanpp-1.02.tar.xz&name=jumanpp-1.02.tar.xz" -O jumanpp-1.02.tar.xz
-#RUN tar xJvf jumanpp-1.02.tar.xz
-#RUN cd jumanpp-1.02/ && ./configure && make && make install
+RUN wget ${JUMANPP_SOURCE_URL}
+RUN tar Jxfv jumanpp-1.02.tar.xz
+RUN cd jumanpp-1.02 && ./configure && make && make install
+WORKDIR /tmp
+RUN rm -rf jumanpp-1.02 jumanpp-1.02.tar.xz
+RUN echo "私はさくらまなの作品が好きです。" | jumanpp
 
 ## KNP
 WORKDIR /tmp
 ### -------------------------------------------------------------------------------------------
 ### 一般公開向けKNP-4.16を利用する場合は下のコード
-RUN wget "http://nlp.ist.i.kyoto-u.ac.jp/DLcounter/lime.cgi?down=http://nlp.ist.i.kyoto-u.ac.jp/nl-resource/knp/knp-4.16.tar.bz2&name=knp-4.16.tar.bz2" -O knp-4.16.tar.bz2
-RUN tar jxf knp-4.16.tar.bz2
-WORKDIR /tmp/knp-4.16
-RUN ./configure && make && make install
+RUN wget ${KNP_SOURCE_URL}
+RUN tar xfj knp-4.17.tar.bz2
+RUN cd knp-4.17 && ./configure && make && make install
+RUN cd ../ && rm -rf knp-4.17
+RUN echo "私はさくらまなの作品が好きです。" | jumanpp | knp
+
+
 ### -------------------------------------------------------------------------------------------
-RUN echo "私はさくらまなの作品が好きです。" | juman | knp
-
+### Install python packages
+WORKDIR /opt
+RUN wget "http://nlp.ist.i.kyoto-u.ac.jp/DLcounter/lime.cgi?down=http://lotus.kuee.kyoto-u.ac.jp/nl-resource/pyknp/pyknp-0.3.tar.gz&name=pyknp-0.3.tar.gz" -O pyknp-0.3.tar.gz
+RUN tar -xvf pyknp-0.3.tar.gz && cd pyknp-0.3 && python setup.py install
 ## Pythonパッケージのインストール
-RUN conda install -y psycopg2 pymongo redis sqlalchemy numpy scipy pandas
+RUN conda install -y psycopg2 pymongo redis sqlalchemy numpy scipy pandas flask scikit-learn cython
 RUN pip install jaconv
-
-## Install redis server
-RUN wget -q http://download.redis.io/releases/redis-${REDIS_VERSION}.tar.gz && \
-    tar -zxvf redis-${REDIS_VERSION}.tar.gz && \
-    mv redis-${REDIS_VERSION} redis-src && \
-    cd redis-src && \
-    make
-
-## Install packages for python with conda
-RUN conda install -y numpy scipy scikit-learn cython psycopg2
-RUN pip install --user https://github.com/rogerbinns/apsw/releases/download/3.17.0-r1/apsw-3.17.0-r1.zip \
---global-option=fetch --global-option=--version --global-option=3.17.0 --global-option=--all \
---global-option=build --global-option=--enable-all-extensions
-RUN pip install celery
 
 ### コード配置用のディレクトリ
 RUN mkdir /codes
 ADD . /codes/knp-utils
 RUN cd /codes/knp-utils && python setup.py install
 
-RUN mkdir /var/log/redis/
-RUN mkdir /var/run/redis
+## Web appのバックエンドDBの作成 ##
+RUN mkdir /var/lib/postgresql/data
+RUN mkdir /run/postgresql && chmod 777 /run/postgresql
+ENV PGDATA /var/lib/postgresql/data
+ENV PGRUN /run/postgresql
+ENV authMethod md5
+ENV POSTGRES_DB postgres
+ENV POSTGRES_DOCKER_USER docker
+ENV POSTGRES_DOCKER_PASSWORD docker
 
-EXPOSE 6379
+RUN chown -R postgres "$PGDATA"
+RUN gosu postgres initdb
+RUN sed -ri "s/^#(listen_addresses\s*=\s*)\S+/\1'*'/" "$PGDATA"/postgresql.conf
+RUN pass="PASSWORD '$POSTGRES_DOCKER_PASSWORD'" && authMethod=md5
+
+
+RUN createSql="CREATE DATABASE $POSTGRES_DB;"
+RUN echo $createSql | gosu postgres postgres --single -jE  && echo
+RUN userSql="CREATE USER $POSTGRES_DOCKER_USER WITH SUPERUSER PASSWORD '${POSTGRES_DOCKER_PASSWORD}';" && \
+echo $userSql | gosu postgres postgres --single -jE && \
+echo
+### テーブルの初期化
+WORKDIR /codes/knp-utils/web_api
+RUN gosu postgres pg_ctl -D "$PGDATA" -o "-c listen_addresses='*'" -w start && \
+sleep 3 && \
+psql postgres -U ${POSTGRES_DOCKER_USER} -h localhost -f initialize_backend_db.sql && \
+gosu postgres pg_ctl -D "$PGDATA" -m fast -w stop
+RUN { echo; echo "host all all 0.0.0.0/0 $authMethod"; } >> "$PGDATA"/pg_hba.conf
+
+EXPOSE 5432
 EXPOSE 5000
-WORKDIR /codes/knp-utils 
-CMD ["/bin/bash", "start_web_server.sh"]
+WORKDIR /codes/knp-utils
+CMD ["/bin/bash", "docker_start_web_server.sh"]

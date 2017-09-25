@@ -10,6 +10,7 @@ logger = logging.getLogger('command')
 #PATH_KNP_COMMAND="/usr/local/bin/knp"
 PATH_JUMAN_COMMAND="juman"
 PATH_KNP_COMMAND="knp"
+PATH_JUMANPP_COMMAND="jumanpp"
 
 
 def example_interface():
@@ -33,6 +34,7 @@ def example_interface():
                               n_jobs=-1,
                               is_normalize_text=True,
                               is_get_processed_doc=True,
+                              is_split_text=True,
                               juman_command=PATH_JUMAN_COMMAND,  # Note: You can set jumanpp also (if it's available in your system)
                               knp_command=PATH_KNP_COMMAND,
                               process_mode="pexpect")
@@ -115,7 +117,7 @@ def performance_comparison():
     else:
         start = time.time()
         from pyknp import KNP
-        knp_obj = KNP(command=PATH_KNP_COMMAND, jumancommand=PATH_JUMAN_COMMAND)
+        knp_obj = KNP(command=PATH_KNP_COMMAND, jumancommand=PATH_JUMAN_COMMAND, jumanpp=True)
         for document_obj in input_document:
             knp_obj.knp(sentence=knp_job.func_normalize_text(document_obj['text']))
         elapsed_time = time.time() - start
@@ -123,5 +125,5 @@ def performance_comparison():
 
 
 if __name__=='__main__':
-    performance_comparison()
     example_interface()
+    performance_comparison()

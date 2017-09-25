@@ -135,7 +135,8 @@ class UnixProcessHandler(object):
         - This function monitors time which takes for getting the result.
         """
         # type: (text_type)->text_type
-        self.process_analyzer.sendline(input_string)
+        input_encoded = input_string
+        self.process_analyzer.sendline(input_encoded)
         buffer = ""
         while True:
             line_string = self.process_analyzer.readline()  # type: text_type
@@ -224,8 +225,8 @@ class KnpSubProcess(object):
                  knp_server_port=None,
                  juman_server_host=None,
                  juman_server_port=None,
-                 is_use_jumanpp=None,
-                 process_mode='pexpect',
+                 is_use_jumanpp=False,
+                 process_mode='everytime',
                  path_juman_rc=None,
                  eos_pattern="EOS"):
         """* Parameters
@@ -485,7 +486,7 @@ Params = KnpSubProcess
 
 class DocumentObject(object):
     __slots__ = ('record_id', 'status', 'text',
-                 'is_success', 'timestamp', 'updated_at', 'sub_id', 'parsed_result')
+                 'is_success', 'timestamp', 'updated_at', 'sub_id', 'sentence_index', 'parsed_result')
 
     def __init__(self,
                  record_id,
@@ -494,25 +495,35 @@ class DocumentObject(object):
                  parsed_result=None,
                  is_success=None,
                  sub_id=None,
+                 sentence_index=None,
                  timestamp = datetime.now(),
                  updated_at = datetime.now()):
-        # type: (int,text_type,bool,Union[None,str],bool,str,datetime,datetime) -> None
+        # type: (int,text_type,bool,Union[None,str],bool,str,int,datetime,datetime) -> None
 
         if six.PY2:
-            if isinstance(text, str):
-                self.text = text.decode('utf-8')
-            else:
-                self.text = text
+            try:
+                if isinstance(text, str):
+                    self.text = text.decode('utf-8')
+                else:
+                    self.text = text
+            except UnicodeDecodeError:
+                logger.error(traceback.format_exc())
 
-            if isinstance(sub_id, str):
-                self.sub_id = sub_id.decode('utf-8')
-            else:
-                self.sub_id = sub_id
+            try:
+                if isinstance(sub_id, str):
+                    self.sub_id = sub_id.decode('utf-8')
+                else:
+                    self.sub_id = sub_id
+            except UnicodeDecodeError:
+                logger.error(traceback.format_exc())
 
-            if isinstance(parsed_result, str):
-                self.parsed_result = parsed_result.decode('utf-8')
-            else:
-                self.parsed_result = parsed_result
+            try:
+                if isinstance(parsed_result, str):
+                    self.parsed_result = parsed_result.decode('utf-8')
+                else:
+                    self.parsed_result = parsed_result
+            except UnicodeDecodeError:
+                logger.error(traceback.format_exc())
         else:
             self.text = text
             self.sub_id = sub_id
@@ -523,6 +534,7 @@ class DocumentObject(object):
         self.timestamp = timestamp
         self.updated_at = updated_at
         self.is_success = is_success
+        self.sentence_index = sentence_index
 
     def set_knp_parsed_result(self, t_parsed_result):
         """* What you can do
