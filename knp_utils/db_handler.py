@@ -131,7 +131,7 @@ class Sqlite3Handler(DbHandler):
         """
         # type: (DocumentObject)->bool
 
-        sql_update = u"UPDATE {} SET status=?, is_success=?, parsed_result= ?  WHERE record_id = ?".format(self.table_name_text)
+        sql_update = "UPDATE {} SET status=?, is_success=?, parsed_result= ?  WHERE record_id = ?".format(self.table_name_text)
         is_success = False
         i = 0
         while is_success == False:
