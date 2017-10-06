@@ -14,6 +14,7 @@ import os
 import sys
 from typing import List, Dict, Any, Union, Tuple
 from six import text_type
+import time
 # errors
 from knp_utils.errors import ParserIntializeError
 
@@ -167,9 +168,9 @@ class UnixProcessHandler(object):
 
 class SubprocessHandler(object):
     """A old fashion way to keep connection into UNIX process"""
-    def __init__(self, command):
+    def __init__(self, command, timeout_second=None):
         """"""
-        # type: (text_type)->None
+        # type: (text_type,int)->None
         subproc_args = {'stdin': subprocess.PIPE, 'stdout': subprocess.PIPE,
                         'stderr': subprocess.STDOUT, 'cwd': '.',
                         'close_fds': sys.platform != "win32"}
@@ -179,8 +180,14 @@ class SubprocessHandler(object):
                                             shell=True, **subproc_args)
         except OSError:
             raise ParserIntializeError(message='Failed to initialize parser.', path_to_parser=command)
+
         self.command = command
         (self.stdouterr, self.stdin) = (self.process.stdout, self.process.stdin)
+        if timeout_second is None:
+            self.timeout_second = 10000000
+        else:
+            self.timeout_second = timeout_second
+
 
     def __del__(self):
         self.process.stdin.close()
@@ -205,13 +212,18 @@ class SubprocessHandler(object):
         self.process.stdin.flush()
         result = ""
 
+        start_time = datetime.now()
         while True:
             line = self.stdouterr.readline()[:-1].decode('utf-8')
+            result = "%s%s\n" % (result, line)
             if re.search(eos_pattern, line):
                 break
             if re.search(pattern=r'No\ssuch\sfile\sor\sdirectory', string=result):
                 raise ParserIntializeError(message=result, path_to_parser=self.command)
-            result = "%s%s\n" % (result, line)
+
+            elapsed_time = (datetime.now() - start_time).seconds
+            if elapsed_time > self.timeout_second:
+                raise TimeoutError("It wastes longer time than {}".format(self.timeout_second))
 
         return result
 
@@ -221,6 +233,8 @@ class KnpSubProcess(object):
     def __init__(self,
                  knp_command,
                  juman_command,
+                 knp_options=None,
+                 juman_options=None,
                  knp_server_host=None,
                  knp_server_port=None,
                  juman_server_host=None,
@@ -232,6 +246,8 @@ class KnpSubProcess(object):
         """* Parameters
         - knp_command: Path into Bin of KNP
         - juman_command: Path into Bin of Juman(or Juman++)
+        - knp_options: Option strings of KNP(or KNP++)
+        - juman_options: Option string of Juman(or Juman++)
         - knp_server_host: Host address where KNP server is working
         - knp_server_port: Port number where KNP server is working
         - juman_server_host: Host address where Juman server is working
@@ -240,11 +256,13 @@ class KnpSubProcess(object):
         - process_mode: Way to call UNIX commands. 1; You call UNIX commands everytime. 2; You keep UNIX commands running.
         - path_juman_rc: Path into Jumanrc file.
         """
-        # type: (str,str,str,int,str,int,bool,str,str,int,str,int)->None
-        PROCESS_MODE = ('everytime', 'pexpect')
+        # type: (str,str,str,str,str,int,str,int,bool,str,str,int,str,int)->None
+        PROCESS_MODE = ('everytime', 'pexpect', 'subprocess')
 
         self.knp_command = knp_command
         self.juman_command = juman_command
+        self.juman_options = juman_options
+        self.knp_options = knp_options
         self.knp_server_host = knp_server_host
         self.knp_server_port = knp_server_port
         self.juman_server_host = juman_server_host
@@ -289,8 +307,27 @@ class KnpSubProcess(object):
             self.__launch_pexpect_mode()
         elif self.process_mode == 'everytime':
             self.__launch_everytime_mode()
+        elif self.process_mode == 'subprocess':
+            self.__launch_subprocess_model()
         else:
             raise Exception("It failed to initialize. Check your configurations.")
+
+    def __launch_subprocess_model(self):
+        """* What you can do
+        - It defines process with subprocess handler
+        """
+        # type: (bool)->None
+        self.validate_arguments()
+        if self.juman_options is None:
+            self.juman = SubprocessHandler(command='{}'.format(self.juman_command), timeout_second=self.timeout_second)
+        else:
+            self.juman = SubprocessHandler(command='{} {}'.format(self.juman_command, self.juman_options), timeout_second=self.timeout_second)
+
+        if self.knp_options is None:
+            self.knp = SubprocessHandler(command='{} -tab'.format(self.knp_command), timeout_second=self.timeout_second)
+        else:
+            self.knp = SubprocessHandler(command='{} {}'.format(self.knp_command, self.knp_options), timeout_second=self.timeout_second)
+
 
     def __launch_pexpect_mode(self, is_keep_process=True):
         """* What you can do
@@ -304,10 +341,13 @@ class KnpSubProcess(object):
         # set juman/juman++ unix process #
         if self.is_use_jumanpp:
             self.juman = UnixProcessHandler(unix_command=self.juman_command,
-                                            timeout_second=self.timeout_second)
+                                            timeout_second=self.timeout_second,
+                                            option=self.juman_options)
         else:
             if not self.path_juman_rc is None:
                 option_string = ' '.join(['-r', self.path_juman_rc])
+            elif not self.juman_options is None:
+                option_string = self.juman_options
             else:
                 option_string = None
             self.juman = UnixProcessHandler(unix_command=self.juman_command,
@@ -316,6 +356,8 @@ class KnpSubProcess(object):
         # set KNP process #
         if is_keep_process:
             self.knp = SubprocessHandler(command='knp -tab')
+        elif not self.knp_options is None:
+            self.knp = [self.knp_command, self.knp_options]
         else:
             self.knp = [self.knp_command, '-tab']
 
@@ -328,11 +370,16 @@ class KnpSubProcess(object):
         else:
             if not self.path_juman_rc is None:
                 self.juman = [self.juman_command, '-B', '-e2', '-r', self.path_juman_rc]
+            elif not self.juman_options is None:
+                self.juman = [self.juman_command] + self.juman_options.split()
             else:
                 self.juman = [self.juman_command, '-B', '-e2']
 
         # set KNP unix command #
-        self.knp = [self.knp_command, '-tab']
+        if not self.knp_options is None:
+            self.knp = [self.knp_command] + self.knp_options.split()
+        else:
+            self.knp = [self.knp_command, '-tab']
 
     def __launch_server_model(self):
         """"""
@@ -346,7 +393,7 @@ class KnpSubProcess(object):
                 raise Exception("No command at {}".format(self.juman_command))
             if shutil.which(self.knp_command) is None:
                 raise Exception("No command at {}".format(self.juman_command))
-        else:
+        elif six.PY2:
             doc_command_string = "echo '' | {}".format(self.juman_command)
             command_check = os.system(doc_command_string)
             if not command_check == 0:
@@ -356,6 +403,66 @@ class KnpSubProcess(object):
             command_check = os.system(doc_command_string)
             if not command_check == 0:
                 raise Exception("No command at {}".format(self.knp_command))
+
+        # Check options either of under Python2.x or Python3.x
+        if not self.juman_options is None:
+            echo_process = ["echo", '']
+            echo_ps = subprocess.Popen(echo_process, stdout=subprocess.PIPE)
+            p = subprocess.Popen([self.juman_command] + self.juman_options.split(),
+                                 stdin=echo_ps.stdout,
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE,
+                                 shell=False)
+            error_lines = p.stderr.readlines()  # type: List[bytes]
+            error_lines_str = [line.decode() for line in error_lines]
+            for line in error_lines_str:
+                if re.match('^usage:', line.lower()):
+                    raise Exception("Invalid options: {} {}".format(self.juman_command, self.juman_options))
+
+        if not self.knp_options is None:
+            echo_process = ["echo", '']
+            echo_ps = subprocess.Popen(echo_process, stdout=subprocess.PIPE)
+            echo_ps.wait()
+            if self.juman_options is None:
+                juman_command = [self.juman_command]
+            else:
+                juman_command = [self.juman_command] + self.juman_options.split()
+            juman_ps = subprocess.Popen(juman_command, stdin=echo_ps.stdout, stdout=subprocess.PIPE)
+            juman_ps.wait()
+            p = subprocess.Popen([self.knp_command] + self.knp_options.split(),
+                                 stdin=juman_ps.stdout,
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE,
+                                 shell=False)
+            error_lines = p.stderr.readlines()  # type: List[bytes]
+            error_lines_str = [line.decode() for line in error_lines]
+            for line in error_lines_str:
+                if re.match('^usage:', line.lower()):
+                    raise Exception("Invalid options: {} {}".format(self.knp_command, self.knp_options))
+
+    def __run_subprocess_mode(self, input_string):
+        """* What you can do
+        """
+        # type: (text_type)->Tuple[bool,text_type]
+        assert isinstance(self.juman, SubprocessHandler)
+        assert isinstance(self.knp, SubprocessHandler)
+
+        try:
+            juman_result = self.juman.query(input_string, '^EOS')
+            knp_result = self.knp.query(juman_result, '^EOS')
+            return (True, knp_result)
+        except UnicodeDecodeError:
+            traceback_message = traceback.format_exc()
+            logger.error("Error with command={}".format(traceback.format_exc()))
+            return (False, 'error with UnicodeDecodeError traceback={}'.format(traceback_message))
+        except TimeoutError:
+            traceback_message = traceback.format_exc()
+            logger.error("Error with command={}".format(traceback.format_exc()))
+            return (False, 'error with TimeoutErro traceback={}'.format(traceback_message))
+        except Exception:
+            traceback_message = traceback.format_exc()
+            logger.error("Error with command={}".format(traceback.format_exc()))
+            return (False, 'error traceback={}'.format(traceback_message))
 
     def __run_pexpect_mode(self, input_string):
         """* What you can do
@@ -373,7 +480,7 @@ class KnpSubProcess(object):
 
         if isinstance(self.knp, SubprocessHandler):
             try:
-                parsed_result = self.knp.query(sentence=juman_result.strip(), eos_pattern='EOS')
+                parsed_result = self.knp.query(sentence=juman_result.strip(), eos_pattern='^EOS')
                 return (True, parsed_result)
             except:
                 traceback_message = traceback.format_exc()
@@ -475,6 +582,8 @@ class KnpSubProcess(object):
             return self.__run_pexpect_mode(text)
         elif self.process_mode == 'everytime':
             return self.__run_everytime_mode(text)
+        elif self.process_mode == 'subprocess':
+            return self.__run_subprocess_mode(text)
         else:
             raise Exception("It failed to initialize. Check your configurations.")
 
