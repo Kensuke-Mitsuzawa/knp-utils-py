@@ -33,14 +33,16 @@ def parse_text_block(seq_record_id,
                      path_sqlite3_db_handler,
                      knp_command='/usr/local/bin/knp',
                      juman_command='/usr/local/bin/juman',
-                     process_mode='pexpect',
+                     knp_options=None,
+                     juman_options=None,
+                     process_mode='everytime',
                      path_juman_rc=None,
                      is_normalize_text=False,
                      func_normalization=func_normalize_text):
     """* What you can do
     - It parses one input-document.
     """
-    # type: (List[int],text_type,text_type,text_type,text_type,text_type,bool,Callable[[text_type],text_type])->bool
+    # type: (List[int],text_type,text_type,text_type,text_type,text_type,text_type,text_type,bool,Callable[[text_type],text_type])->bool
 
     if os.path.basename(juman_command)=='jumanpp':
         is_use_jumanpp = True
@@ -48,6 +50,8 @@ def parse_text_block(seq_record_id,
         is_use_jumanpp = False
     knp_process_handler = KnpSubProcess(knp_command=knp_command,
                                         juman_command=juman_command,
+                                        juman_options=juman_options,
+                                        knp_options=knp_options,
                                         process_mode=process_mode,
                                         path_juman_rc=path_juman_rc,
                                         eos_pattern="EOS",
@@ -74,6 +78,8 @@ def parse_texts(path_sqlite3_db_handler,
                 n_jobs,
                 knp_command='/usr/local/bin/knp',
                 juman_command='/usr/local/bin/juman',
+                knp_options=None,
+                juman_options=None,
                 path_juman_rc=None,
                 process_mode='pexpect',
                 is_normalize_text=True,
@@ -81,7 +87,7 @@ def parse_texts(path_sqlite3_db_handler,
     """* What you can do
     - It takes many documents and parse them
     """
-    # type: (text_type,int,text_type,text_type,text_type,text_type,bool,Callable[[text_type],text_type])->bool
+    # type: (text_type,int,text_type,text_type,text_type,text_type,text_type,text_type,bool,Callable[[text_type],text_type])->bool
     seq_ids_to_process = Sqlite3Handler(path_sqlite3_db_handler).get_seq_ids_not_processed()
     # Run KNP process in parallel #
     if n_jobs==-1:
@@ -94,6 +100,8 @@ def parse_texts(path_sqlite3_db_handler,
         path_sqlite3_db_handler=path_sqlite3_db_handler,
         knp_command=knp_command,
         juman_command=juman_command,
+        knp_options=knp_options,
+        juman_options=juman_options,
         process_mode=process_mode,
         path_juman_rc=path_juman_rc,
         is_normalize_text=is_normalize_text,
@@ -235,6 +243,8 @@ def main(seq_input_dict_document,
          file_name=str(uuid.uuid4()),
          knp_command='/usr/local/bin/knp',
          juman_command='/usr/local/bin/juman',
+         knp_options=None,
+         juman_options=None,
          path_juman_rc=None,
          process_mode='everytime',
          is_get_processed_doc=True,
@@ -268,7 +278,7 @@ def main(seq_input_dict_document,
         - Boolean flag if you get processed document or Not. KNP result string tends to be super big. So, if you put a lot of document, I strongly recomment to put is_get_processed_doc == False.
          And use Sqlite3Handler(path_sqlite_file=path_working_db).get_record(is_use_generator=True).
     """
-    # type: (List[Dict[str,Any]],int,text_type,text_type,text_type,text_type,text_type,text_type,bool,bool,bool,bool,Callable[[text_type],text_type])->ResultObject
+    # type: (List[Dict[str,Any]],int,text_type,text_type,text_type,text_type,text_type,text_type,text_type,text_type,bool,bool,bool,bool,Callable[[text_type],text_type])->ResultObject
     if is_delete_working_db and is_get_processed_doc == False:
         raise Exception('Nothing is return object when is_delete_working_db = True and is_get_processed_doc = False')
 
@@ -284,6 +294,8 @@ def main(seq_input_dict_document,
                 n_jobs=n_jobs,
                 knp_command=knp_command,
                 juman_command=juman_command,
+                juman_options=juman_options,
+                knp_options=knp_options,
                 process_mode=process_mode,
                 path_juman_rc=path_juman_rc,
                 is_normalize_text=is_normalize_text,

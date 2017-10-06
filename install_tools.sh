@@ -62,9 +62,9 @@ is_knp_install=$?
 
 if [ $is_knp_install -eq 127 ]; then
     # install knp
-    wget -O knp-4.17.tar.bz2 "http://nlp.ist.i.kyoto-u.ac.jp/DLcounter/lime.cgi?down=http://nlp.ist.i.kyoto-u.ac.jp/nl-resource/knp/knp-4.17.tar.bz2&name=knp-4.17.tar.bz2"
-    tar jxf knp-4.17.tar.bz2
-    cd knp-4.17
+    wget -O knp-4.18.tar.bz2 "http://nlp.ist.i.kyoto-u.ac.jp/DLcounter/lime.cgi?down=http://nlp.ist.i.kyoto-u.ac.jp/nl-resource/knp/knp-4.18.tar.bz2&name=knp-4.18.tar.bz2"
+    tar jxf knp-4.18.tar.bz2
+    cd knp-4.18
     ./configure && make  && make install
 else
     :
@@ -100,14 +100,14 @@ else
     :
 fi
 
-if [ -d ./knp-4.17 ]; then
-    rm -rf knp-4.17
+if [ -d ./knp-4.18 ]; then
+    rm -rf knp-4.18
 else
     :
 fi
 
-if [ -f knp-4.17.tar.bz2 ]; then
-    rm knp-4.17.tar.bz2
+if [ -f knp-4.18.tar.bz2 ]; then
+    rm knp-4.18.tar.bz2
 else
     :
 fi

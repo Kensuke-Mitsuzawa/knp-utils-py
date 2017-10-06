@@ -126,6 +126,24 @@ class TestCore(unittest.TestCase):
             is_delete_working_db=True
         )
 
+    def test_subprocess_mode(self):
+        result = knp_job.main(self.seq_docs, is_normalize_text=True, n_jobs=1, process_mode='subprocess')
+
+    def test_invalid_option_command(self):
+        """不正なコマンド引数を与えた時のエラー発生をテスト"""
+        seq_input = [
+            {'text-id': 'test-1', 'text': 'ベッキー♪#も、なんかもう世代交代じゃね？'},
+            {'text-id': 'test-2', 'text': 'ベッキー♪#も、なんかもう世代交代じゃね？'},
+            {'text-id': 'test-3', 'text': 'ベッキー♪#も、なんかもう世代交代じゃね？'}
+        ]
+
+        with self.assertRaises(Exception):
+            knp_job.main(seq_input_dict_document=seq_input,is_normalize_text=True,n_jobs=-1,juman_options='-LL',knp_options='-KK')
+
+        with self.assertRaises(Exception):
+            knp_job.main(seq_input_dict_document=seq_input,is_normalize_text=True,n_jobs=-1,knp_options='-KK')
+
+
 
 if __name__ == '__main__':
     unittest.main()
