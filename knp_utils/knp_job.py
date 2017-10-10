@@ -3,6 +3,7 @@
 from knp_utils import models, db_handler
 from knp_utils.db_handler import Sqlite3Handler
 from knp_utils.models import KnpSubProcess, DocumentObject, ResultObject
+from knp_utils.utils import func_normalize_text, func_run_parsing
 # else
 from typing import List, Tuple, Dict, Any, Callable
 from more_itertools import chunked
@@ -13,20 +14,6 @@ import six
 import uuid
 import os
 import re
-import jaconv
-
-
-def func_normalize_text(text):
-    """* What you can do
-    - It make normalize input text into text which is suitable to KNP analysis.
-    """
-    # type: (str)->str
-    if six.PY2:
-        if isinstance(text, str):
-            text = text.decode('utf-8')
-        return jaconv.h2z(text=re.sub(r'\s', '', string=text), kana=True, ascii=True, digit=True)
-    else:
-        return jaconv.h2z(text=re.sub(r'\s', '', string=text), kana=True, ascii=True, digit=True)
 
 
 def parse_text_block(seq_record_id,
@@ -35,14 +22,16 @@ def parse_text_block(seq_record_id,
                      juman_command='/usr/local/bin/juman',
                      knp_options=None,
                      juman_options=None,
-                     process_mode='everytime',
+                     process_mode='subprocess',
                      path_juman_rc=None,
                      is_normalize_text=False,
+                     timeout_seconds=60,
                      func_normalization=func_normalize_text):
     """* What you can do
     - It parses one input-document.
     """
-    # type: (List[int],text_type,text_type,text_type,text_type,text_type,text_type,text_type,bool,Callable[[text_type],text_type])->bool
+    # type: (List[int],text_type,text_type,text_type,text_type,text_type,text_type,text_type,bool,int,Callable[[text_type],text_type])->bool
+
 
     if os.path.basename(juman_command)=='jumanpp':
         is_use_jumanpp = True
@@ -55,7 +44,8 @@ def parse_text_block(seq_record_id,
                                         process_mode=process_mode,
                                         path_juman_rc=path_juman_rc,
                                         eos_pattern="EOS",
-                                        is_use_jumanpp=is_use_jumanpp)
+                                        is_use_jumanpp=is_use_jumanpp,
+                                        timeout_second=timeout_seconds)
 
     process_db_handler = Sqlite3Handler(path_sqlite3_db_handler)
     for record_id in seq_record_id:
@@ -66,6 +56,7 @@ def parse_text_block(seq_record_id,
             text = func_normalization(document_obj.text)
         else:
             text = document_obj.text
+
 
         parsed_result = knp_process_handler.run_command(text=text)  # type: Tuple[bool,six.text_type]
         document_obj.set_knp_parsed_result(t_parsed_result=parsed_result)
@@ -81,13 +72,14 @@ def parse_texts(path_sqlite3_db_handler,
                 knp_options=None,
                 juman_options=None,
                 path_juman_rc=None,
-                process_mode='pexpect',
+                process_mode='subprocess',
                 is_normalize_text=True,
+                timeout_seconds=60,
                 func_normalization=func_normalize_text):
     """* What you can do
     - It takes many documents and parse them
     """
-    # type: (text_type,int,text_type,text_type,text_type,text_type,text_type,text_type,bool,Callable[[text_type],text_type])->bool
+    # type: (text_type,int,text_type,text_type,text_type,text_type,text_type,text_type,bool,int,Callable[[text_type],text_type])->bool
     seq_ids_to_process = Sqlite3Handler(path_sqlite3_db_handler).get_seq_ids_not_processed()
     # Run KNP process in parallel #
     if n_jobs==-1:
@@ -105,6 +97,7 @@ def parse_texts(path_sqlite3_db_handler,
         process_mode=process_mode,
         path_juman_rc=path_juman_rc,
         is_normalize_text=is_normalize_text,
+        timeout_seconds=timeout_seconds,
         func_normalization=func_normalization
     ) for block_record_id in seq_block_record_id)
 
@@ -246,11 +239,12 @@ def main(seq_input_dict_document,
          knp_options=None,
          juman_options=None,
          path_juman_rc=None,
-         process_mode='everytime',
+         process_mode='subprocess',
          is_get_processed_doc=True,
          is_delete_working_db=True,
          is_normalize_text=False,
          is_split_text=False,
+         timeout_seconds=60,
          func_normalization=func_normalize_text):
     """*What you can do
     -
@@ -278,7 +272,7 @@ def main(seq_input_dict_document,
         - Boolean flag if you get processed document or Not. KNP result string tends to be super big. So, if you put a lot of document, I strongly recomment to put is_get_processed_doc == False.
          And use Sqlite3Handler(path_sqlite_file=path_working_db).get_record(is_use_generator=True).
     """
-    # type: (List[Dict[str,Any]],int,text_type,text_type,text_type,text_type,text_type,text_type,text_type,text_type,bool,bool,bool,bool,Callable[[text_type],text_type])->ResultObject
+    # type: (List[Dict[str,Any]],int,text_type,text_type,text_type,text_type,text_type,text_type,text_type,text_type,bool,bool,bool,bool,int,Callable[[text_type],text_type])->ResultObject
     if is_delete_working_db and is_get_processed_doc == False:
         raise Exception('Nothing is return object when is_delete_working_db = True and is_get_processed_doc = False')
 
@@ -299,6 +293,7 @@ def main(seq_input_dict_document,
                 process_mode=process_mode,
                 path_juman_rc=path_juman_rc,
                 is_normalize_text=is_normalize_text,
+                timeout_seconds=timeout_seconds,
                 func_normalization=func_normalization)
 
     if is_get_processed_doc:

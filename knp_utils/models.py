@@ -198,34 +198,51 @@ class SubprocessHandler(object):
         except OSError:
             pass
 
-    def query(self, sentence, eos_pattern):
-        #  type: (text_type, text_type)->text_type
+    def query(self, sentence, eos_pattern, document_type):
+        #  type: (text_type, text_type, text_type)->text_type
         assert (isinstance(sentence, six.text_type))
-        if isinstance(sentence, six.text_type) and six.PY2:
-            # python2で入力がunicodeだった場合の想定 #
-            self.process.stdin.write(sentence.encode('utf-8') + '\n'.encode('utf-8'))
-        elif isinstance(sentence, str) and six.PY2:
-            self.process.stdin.write(sentence + '\n'.encode('utf-8'))
-        elif isinstance(sentence, str) and six.PY3:
-            self.process.stdin.write(sentence.encode('utf-8') + '\n'.encode('utf-8'))
+        if document_type == 'juman':
+            if isinstance(sentence, six.text_type) and six.PY2:
+                # python2で入力がunicodeだった場合の想定 #
+                self.process.stdin.write(sentence.encode('utf-8') + '\n'.encode('utf-8'))
+            elif isinstance(sentence, str) and six.PY2:
+                self.process.stdin.write(sentence + '\n'.encode('utf-8'))
+            elif isinstance(sentence, str) and six.PY3:
+                self.process.stdin.write(sentence.encode('utf-8') + '\n'.encode('utf-8'))
+        elif document_type=='knp':
+            if isinstance(sentence, six.text_type) and six.PY2:
+                # python2で入力がunicodeだった場合の想定 #
+                self.process.stdin.write(sentence.encode('utf-8'))
+            elif isinstance(sentence, str) and six.PY2:
+                self.process.stdin.write(sentence)
+            elif isinstance(sentence, str) and six.PY3:
+                self.process.stdin.write(sentence.encode('utf-8'))
 
         self.process.stdin.flush()
-        result = ""
+        if six.PY2:
+            result = "".encode('utf-8')
+        elif six.PY3:
+            result = "".encode('utf-8')
+        else:
+            raise Exception()
 
         start_time = datetime.now()
+        eos_pattern_byte = eos_pattern.encode('utf-8')
+        no_file_pattern_byte = r'No\ssuch\sfile\sor\sdirectory'.encode('utf-8')
         while True:
-            line = self.stdouterr.readline()[:-1].decode('utf-8')
-            result = "%s%s\n" % (result, line)
-            if re.search(eos_pattern, line):
+            line = self.stdouterr.readline()[:-1]
+            result = result + line + "\n".encode('utf-8')
+            if re.search(eos_pattern_byte, line):
                 break
-            if re.search(pattern=r'No\ssuch\sfile\sor\sdirectory', string=result):
+            if re.search(pattern=no_file_pattern_byte, string=result):
                 raise ParserIntializeError(message=result, path_to_parser=self.command)
 
             elapsed_time = (datetime.now() - start_time).seconds
             if elapsed_time > self.timeout_second:
                 raise TimeoutError("It wastes longer time than {}".format(self.timeout_second))
 
-        return result
+        result_unicode = result.decode('utf-8')
+        return result_unicode
 
 
 class KnpSubProcess(object):
@@ -240,9 +257,10 @@ class KnpSubProcess(object):
                  juman_server_host=None,
                  juman_server_port=None,
                  is_use_jumanpp=False,
-                 process_mode='everytime',
+                 process_mode='subprocess',
                  path_juman_rc=None,
-                 eos_pattern="EOS"):
+                 eos_pattern="EOS",
+                 timeout_second=60):
         """* Parameters
         - knp_command: Path into Bin of KNP
         - juman_command: Path into Bin of Juman(or Juman++)
@@ -256,7 +274,7 @@ class KnpSubProcess(object):
         - process_mode: Way to call UNIX commands. 1; You call UNIX commands everytime. 2; You keep UNIX commands running.
         - path_juman_rc: Path into Jumanrc file.
         """
-        # type: (str,str,str,str,str,int,str,int,bool,str,str,int,str,int)->None
+        # type: (str,str,str,str,str,int,str,int,bool,str,str,str,int)->None
         PROCESS_MODE = ('everytime', 'pexpect', 'subprocess')
 
         self.knp_command = knp_command
@@ -271,7 +289,7 @@ class KnpSubProcess(object):
         self.is_use_jumanpp = is_use_jumanpp
         self.process_mode = process_mode
         self.eos_pattern = eos_pattern
-        self.timeout_second = 60
+        self.timeout_second = timeout_second
 
         # Check jumanrc file path #
         if not self.path_juman_rc is None and not os.path.exists(self.path_juman_rc):
@@ -448,8 +466,8 @@ class KnpSubProcess(object):
         assert isinstance(self.knp, SubprocessHandler)
 
         try:
-            juman_result = self.juman.query(input_string, '^EOS')
-            knp_result = self.knp.query(juman_result, '^EOS')
+            juman_result = self.juman.query(input_string, '^EOS', 'juman')
+            knp_result = self.knp.query(juman_result, '^EOS', 'knp')
             return (True, knp_result)
         except UnicodeDecodeError:
             traceback_message = traceback.format_exc()
