@@ -5,7 +5,8 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify
 from typing import List, Dict, Any, Union, Tuple
 ## knp_utils
 from knp_utils import knp_job, models, db_handler
-from knp_utils.models import DocumentObject
+from knp_utils.models import DocumentObject, KnpSubProcess
+from knp_utils.utils import func_run_parsing, generate_record_data_model_obj, generate_document_objects
 ## to generate job-queue-id
 import uuid
 ## postgresql
@@ -15,9 +16,11 @@ import psycopg2
 # else
 import pkg_resources
 import os
+import psutil
 import traceback
 from threading import Thread
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import re
 
 flask_app = Flask(__name__)
@@ -36,11 +39,12 @@ PSQL_PASS = flask_app.config['PSQL_PASS']
 PSQL_DB = flask_app.config['PSQL_DB']
 
 TASK_STATUS = {
-    'PENDING': 'PENDING',
-    'FAILURE': 'FAILURE',
-    'PROGRESS': 'PROGRESS',
-    'DONE': 'DONE'
+    "PENDING": 'PENDING',
+    "FAILURE": 'FAILURE',
+    "PROGRESS": 'PROGRESS',
+    "DONE": 'DONE'
 }
+
 
 class PgBackendDbHandler(object):
     def __init__(self, db_connection, table_knp_result='knp_result', table_task_status='task_status'):
@@ -48,6 +52,27 @@ class PgBackendDbHandler(object):
         self.db_connection = db_connection
         self.table_knp_result = table_knp_result
         self.table_task_status = table_task_status
+
+    def is_task_done(self,
+                     task_id:str,
+                     seq_document_sub_id:List[str])->Union[str,bool]:
+        """* What u you can do
+        - タスクが終わったことを確認する。
+        - すべてのdocument sub-idがDBにinsertされたら、終了と判定する
+        """
+        sql_update = "SELECT text_id FROM {} WHERE task_id = %s".format(self.table_task_status)
+        cur = self.db_connection.cursor()  # type: cursor
+        try:
+            cur.execute(sql_update, (task_id,))
+            seq_text_id = [record[0] for record in cur.fetchall()]
+        except:
+            self.db_connection.rollback()
+            return traceback.format_exc()
+        else:
+            if set(seq_document_sub_id) == set(seq_text_id):
+                return True
+            else:
+                return False
 
     def insert_task_status_record(self,
                                   task_status=None,
@@ -187,51 +212,63 @@ def init_psql_db_connection(psql_host=PSQL_HOST,
 
 
 def backend_job(backend_db_handler:PgBackendDbHandler,
+                document_object:DocumentObject,
+                seq_document_sub_id:List[str],
                 task_id:str,
-                input_document:List[Dict[str,Any]],
-                n_jobs:int,
                 is_use_jumanpp:bool,
-                is_split_text:bool)->bool:
+                is_normalize_text: bool = True,
+                max_timeout:int=120)->bool:
     """* What you can do
+    - レコードを1つ取得
+    - レコードをKNPで解析
+    - 解析ずみレコードを保存
     """
-    res_update = backend_db_handler.update_task_status_record(task_id=task_id, task_status=TASK_STATUS['PROGRESS'], time_at=datetime.now())
-
     if is_use_jumanpp:
         juman_command = JUMANPP_COMMAND
     else:
         juman_command = JUMAN_COMMAND
 
     try:
-        parsed_result_object = knp_job.main(seq_input_dict_document=input_document,
-                                            n_jobs=n_jobs,
-                                            file_name=flask_app.config['FILENAME_BACKEND_SQLITE3'],
-                                            knp_command=KNP_COMMAND,
+        knp_process_handler = KnpSubProcess(knp_command=KNP_COMMAND,
                                             juman_command=juman_command,
-                                            is_split_text=is_split_text,
-                                            is_normalize_text=True,
-                                            is_get_processed_doc=True,
-                                            is_delete_working_db=True)
-        seq_parsed_document = parsed_result_object.seq_document_obj
-        seq_insert_bool = [None] * len(seq_parsed_document)
-        for i, parsed_doc_obj in enumerate(seq_parsed_document):
-            assert isinstance(parsed_doc_obj, DocumentObject)
-            is_success_result = backend_db_handler.insert_knp_result_record(
-                task_id=task_id,
-                sentence_index=parsed_doc_obj.sentence_index,
-                text_id=parsed_doc_obj.sub_id,
-                knp_result=parsed_doc_obj.parsed_result,
-                status=parsed_doc_obj.status,
-                created_at=datetime.now())
-            if isinstance(is_success_result, bool):
-                seq_insert_bool[i] = is_success_result
-            else:
-                seq_insert_bool[i] = False
-        else:
-            backend_db_handler.update_task_status_record(task_id=task_id, task_status=TASK_STATUS['DONE'], time_at=datetime.now())
+                                            juman_options=None,
+                                            knp_options=None,
+                                            process_mode='subprocess',
+                                            path_juman_rc=None,
+                                            eos_pattern="EOS",
+                                            is_use_jumanpp=is_use_jumanpp,
+                                            timeout_second=max_timeout)
     except:
-        backend_db_handler.update_task_status_record(task_id=task_id, task_status=TASK_STATUS['FAILURE'],
-                                                     description=traceback.format_exc(), time_at=datetime.now())
+        res_update = backend_db_handler.update_task_status_record(task_id=task_id,
+                                                                  task_status=TASK_STATUS["FAILURE"],
+                                                                  description="Failed to initialize Juman/KNP process",
+                                                                  time_at=datetime.now())
         return False
+    else:
+        pass
+
+    record_id, t_parsed_result = func_run_parsing(knp_process_handler=knp_process_handler,
+                                                  record_id=document_object.record_id,
+                                                  input_text=document_object.text,
+                                                  is_normalize_text=is_normalize_text)
+    document_object.set_knp_parsed_result(t_parsed_result)
+    assert isinstance(document_object, DocumentObject)
+    is_success_result = backend_db_handler.insert_knp_result_record(
+        task_id=task_id,
+        sentence_index=document_object.sentence_index,
+        text_id=document_object.sub_id,
+        knp_result=document_object.parsed_result,
+        status=document_object.is_success,
+        created_at=datetime.now())
+    if is_success_result is False:
+        backend_db_handler.update_task_status_record(task_id=task_id, task_status=TASK_STATUS['FAILURE'], description=traceback.format_exc(), time_at=datetime.now())
+    else:
+        pass
+
+    is_task_done = backend_db_handler.is_task_done(task_id=task_id, seq_document_sub_id=seq_document_sub_id)
+    if is_task_done:
+        backend_db_handler.update_task_status_record(task_id=task_id, task_status=TASK_STATUS['DONE'],
+                                                     time_at=datetime.now())
     else:
         return True
 
@@ -346,9 +383,9 @@ def run_knp_api():
 
     try:
         if 'n_jobs' in body_object:
-            n_jobs = body_object['n_jobs']
+            n_max_worker = body_object['n_jobs']
         else:
-            n_jobs = -1
+            n_max_worker = None
 
         if 'is_use_jumanpp' in body_object:
             is_use_jumanpp = body_object['is_use_jumanpp']
@@ -359,14 +396,34 @@ def run_knp_api():
             is_split_text = body_object['is_split_text']
         else:
             is_split_text = False
+    except:
+        error_message = traceback.format_exc()
+        error_response_body['message'] = error_message
+        flask_app.logger.error(error_message)
+        return error_response_body
+    else:
+        pass
 
-        th1 = Thread(target=backend_job, args=(backend_handler, task_id, input_document, n_jobs, is_use_jumanpp, is_split_text))
-        th1.setDaemon(False)
-        th1.setName(task_id)
-        th1.start()
-        response_body = {'message': 'Your task is under processing.',
-                         'task_id': task_id}
+    if is_split_text:
+        seq_doc_obj = generate_record_data_model_obj(input_document, is_split_sentence=True)
+    else:
+        seq_doc_obj = generate_document_objects(input_document)
 
+    res_update = backend_handler.update_task_status_record(task_id=task_id, task_status=TASK_STATUS['PROGRESS'], time_at=datetime.now())
+    try:
+        # 非同期、かつThreadでタスクを開始する #
+        seq_doc_sub_id = [doc_obj.sub_id for doc_obj in seq_doc_obj]
+        with ThreadPoolExecutor(max_workers=n_max_worker) as executor:
+            futures = [executor.submit(backend_job,
+                                       backend_handler,
+                                       doc_obj,
+                                       seq_doc_sub_id,
+                                       task_id,
+                                       is_use_jumanpp,
+                                       True,
+                                       120) for doc_obj in seq_doc_obj]
+
+        response_body = {'message': 'Your task is under processing.', 'task_id': task_id}
         return jsonify(response_body), 202, {'Location': url_for('get_task_status', task_id=task_id)}
     except:
         response_body = {'message': 'Internal server error.',
