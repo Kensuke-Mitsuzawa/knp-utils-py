@@ -21,6 +21,7 @@ from knp_utils.errors import ParserIntializeError
 
 if six.PY2:
     ConnectionRefusedError = Exception
+    TimeoutError = Exception
 
 
 # todo これは不要だから消すかも
