@@ -2,6 +2,9 @@
 
 os_type=`uname`
 WORK_DIR=`pwd`
+URL_JUMAN="http://nlp.ist.i.kyoto-u.ac.jp/nl-resource/juman/juman-7.01.tar.bz2"
+URL_JUMANPP="http://lotus.kuee.kyoto-u.ac.jp/nl-resource/jumanpp/jumanpp-1.02.tar.xz"
+URL_KNP="http://nlp.ist.i.kyoto-u.ac.jp/nl-resource/knp/knp-4.19.tar.bz2"
 
 echo "os-type is "$os_type
 if [ `uname` = "Darwin" ]; then
@@ -27,7 +30,7 @@ is_juman_install=$?
 
 if [ $is_juman_install -eq 127 ]; then
     ## juman
-    wget -O juman7.0.1.tar.bz2 "http://nlp.ist.i.kyoto-u.ac.jp/DLcounter/lime.cgi?down=http://nlp.ist.i.kyoto-u.ac.jp/nl-resource/juman/juman-7.01.tar.bz2&name=juman-7.01.tar.bz2"
+    wget -O juman7.0.1.tar.bz2 ${URL_JUMAN}
     bzip2 -dc juman7.0.1.tar.bz2  | tar xvf -
     cd juman-7.01 && ./configure && make && make install
     # インストール後のldconfig
@@ -44,7 +47,7 @@ is_jumanpp_install=$?
 
 if [ $is_jumanpp_install -eq 127 ]; then
     # jumanpp
-    wget -O jumanpp-1.02.tar.xz "http://nlp.ist.i.kyoto-u.ac.jp/DLcounter/lime.cgi?down=http://lotus.kuee.kyoto-u.ac.jp/nl-resource/jumanpp/jumanpp-1.02.tar.xz&name=jumanpp-1.02.tar.xz"
+    wget -O jumanpp-1.02.tar.xz ${URL_JUMANPP}
     tar xJvf jumanpp-1.02.tar.xz
     cd jumanpp-1.02/
     ./configure && make && make install
@@ -62,9 +65,9 @@ is_knp_install=$?
 
 if [ $is_knp_install -eq 127 ]; then
     # install knp
-    wget -O knp-4.18.tar.bz2 "http://nlp.ist.i.kyoto-u.ac.jp/DLcounter/lime.cgi?down=http://nlp.ist.i.kyoto-u.ac.jp/nl-resource/knp/knp-4.18.tar.bz2&name=knp-4.18.tar.bz2"
-    tar jxf knp-4.18.tar.bz2
-    cd knp-4.18
+    wget -O knp-4.19.tar.bz2 ${URL_KNP}
+    tar jxf knp-4.19.tar.bz2
+    cd knp-4.19
     ./configure && make  && make install
 else
     :
@@ -100,14 +103,14 @@ else
     :
 fi
 
-if [ -d ./knp-4.18 ]; then
-    rm -rf knp-4.18
+if [ -d ./knp-4.19 ]; then
+    rm -rf knp-4.19
 else
     :
 fi
 
-if [ -f knp-4.18.tar.bz2 ]; then
-    rm knp-4.18.tar.bz2
+if [ -f knp-4.19.tar.bz2 ]; then
+    rm knp-4.19.tar.bz2
 else
     :
 fi
