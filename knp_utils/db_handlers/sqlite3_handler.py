@@ -154,7 +154,8 @@ class Sqlite3Handler(DbHandler):
         document_args)
         values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""".format(self.table_name_text)
         cur = self.db_connection.cursor()
-
+        cur.execute("PRAGMA synchronous = OFF")
+        cur.execute("BEGIN TRANSACTION")
         __records = [(
             d.record_id,
             d.text,
@@ -172,6 +173,7 @@ class Sqlite3Handler(DbHandler):
         assert len(records) > 0
         try:
             cur.executemany(sql_insert, records)
+            self.db_connection.commit()
         except Exception as e:
             self.db_connection.rollback()
             logger.error(traceback.format_exc())
