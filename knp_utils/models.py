@@ -24,44 +24,6 @@ if six.PY2:
     TimeoutError = Exception
 
 
-# todo これは不要だから消すかも
-class JumanppClient(object):
-    """Class for receiving data as client"""
-    def __init__(self, hostname, port, timeout=50, option=None):
-        """"""
-        # type:(str,int,int,None)->None
-        if isinstance(port, str):
-            port = int(port)
-
-        try:
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.sock.connect((hostname, port))
-        except ConnectionRefusedError:
-            raise Exception("There is no jumanpp server hostname={}, port={}".format(hostname, port))
-        except:
-            raise
-        if option is not None:
-            self.sock.send(option)
-        data = b""
-        self.sock.settimeout(timeout)
-
-    def __del__(self):
-        if self.sock:
-            self.sock.close()
-
-    def query(self, sentence, pattern):
-        # type: (str, bytes) -> str
-        assert (isinstance(sentence, six.text_type))
-        self.sock.sendall(b"%s\n" % sentence.encode('utf-8').strip())
-        data = self.sock.recv(1024)
-        assert isinstance(data, bytes)
-        recv = data
-        while not re.search(pattern, recv):
-            data = self.sock.recv(1024)
-            recv = b"%s%s" % (recv, data)
-        return recv.strip().decode('utf-8')
-
-
 class UnixProcessHandler(object):
     """This class is a handler of any UNIX process. The class keeps UNIX process running.
     """

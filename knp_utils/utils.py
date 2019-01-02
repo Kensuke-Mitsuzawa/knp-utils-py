@@ -6,7 +6,7 @@ import re
 import jaconv
 import six
 import os
-from six import text_type
+from six import text_type, PY2, PY3
 
 
 def func_normalize_text(text):
@@ -35,12 +35,7 @@ def __check_dict_document(dict_object):
     return True
 
 
-def split_sentence(text):
-    """* What you can do
-    - 文分割を実施する
-    * Output
-    - (文番号,分割済みテキスト)のタプル
-    """
+def __split_sentence_py3(text):
     # type: (str)->List[Tuple[int,str]]
     eos_pattern = re.compile("(?P<mark>[。|！|？|\u2753|\u2757|\u2049|\n]+)")
     particle_pattern = re.compile("(?P<mark>[！|？|\u2753|\u2757|\u2049]+)[$$]+(?P<particle>[が|を|に|と|の|で|や|って])")
@@ -73,6 +68,25 @@ def split_sentence(text):
 
     # 最終的に残った区切り文字で分割
     return [(sent_id, sentence.strip()) for sent_id, sentence in enumerate(break_pattern.split(text))]
+
+
+def split_sentence(text):
+    """* What you can do
+    - 文分割を実施する
+    * Output
+    - (文番号,分割済みテキスト)のタプル
+    """
+    # type: (str)->List[Tuple[int,str]]
+    if PY3:
+        return __split_sentence_py3(text)
+    elif PY2:
+        if '。'.decode('utf-8') in text:
+            __ = [t for t in text.split('。'.decode('utf-8')) if len(t) > 0]
+            return [(i, t) for i, t in enumerate(__)]
+        else:
+            return [(0, text)]
+    else:
+        raise Exception()
 
 
 def generate_record_data_model_obj(seq_input_obj,

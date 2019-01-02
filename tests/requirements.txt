@@ -5,6 +5,5 @@ pexpect
 more_itertools
 jaconv
 futures
-leveldb
 pyknp
 pytest

@@ -2,7 +2,7 @@
 from knp_utils import knp_job
 from knp_utils.models import  Params
 from knp_utils import db_handler
-import codecs
+import copy
 import unittest
 import json
 import os
@@ -146,7 +146,7 @@ class TestCore(unittest.TestCase):
 
     def test_input_document_with_args(self):
         """入力documentにargsが付属しているときの挙動をテスト"""
-        seq_input_docs = json.loads(codecs.open(self.path_input_documents, 'r', 'utf-8').read())
+        seq_input_docs = copy.deepcopy(self.seq_docs)
         for doc in seq_input_docs:
             doc.update({"args": {"date": "2018/12/12"}})
 
