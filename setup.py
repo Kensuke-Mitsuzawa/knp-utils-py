@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 
 from setuptools import setup, find_packages
+import sys
 
-version = '0.41'
+version = '0.42'
 name = 'knp-utils'
 short_description = 'Wrapper scripts for Japanese parser `KNP`'
 author = 'Kensuke Mitsuzawa'
@@ -28,6 +29,17 @@ except(IOError, ImportError):
 
 install_requires = ['joblib', 'typing', 'six', 'pexpect', 'more_itertools', 'jaconv', 'futures']
 dependency_links = []
+
+if sys.version_info >= (3, 0, 0):
+    if sys.version_info <= (3, 5, 0):
+        install_requires.append('typing')
+    elif sys.version_info > (3, 5, 0):
+        pass
+elif sys.version_info <= (2, 9, 9):
+    install_requires.append('typing')
+else:
+    raise NotImplementedError()
+
 
 setup(
     name=name,
