@@ -27,7 +27,7 @@ except(IOError, ImportError):
     long_description = open('README.md').read()
 
 
-install_requires = ['joblib', 'typing', 'six', 'pexpect', 'more_itertools', 'jaconv', 'futures']
+install_requires = ['joblib', 'six', 'pexpect', 'more_itertools', 'jaconv']
 dependency_links = []
 
 if sys.version_info >= (3, 0, 0):
