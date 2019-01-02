@@ -7,3 +7,4 @@ jaconv
 futures
 pyknp
 pytest
+cloudpickle

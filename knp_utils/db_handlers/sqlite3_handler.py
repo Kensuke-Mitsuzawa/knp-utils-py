@@ -2,8 +2,9 @@
 # package modules
 from knp_utils import logger_unit
 from knp_utils.models import DocumentObject
+from knp_utils.db_handlers.base import DbHandler
 # typing
-from typing import List, Tuple, Dict, Union, Iterable, Any
+from typing import List, Union, Iterable
 # else
 import json
 import os
@@ -18,27 +19,6 @@ TIME_SLEEP = random.randint(2, 10)
 N_RETRY = 60
 
 
-class DbHandler(object):
-    def insert_record(self, document_obj):
-        """"""
-        # type: (DocumentObject)->bool
-        raise NotImplementedError()
-
-    def get_record(self, is_use_generator):
-        """"""
-        # type: (bool)->List[DocumentObject]
-        raise NotImplementedError()
-
-    def get_seq_ids_not_processed(self):
-        """"""
-        # type: ()->List[str]
-        raise NotImplementedError()
-
-    def update_record(self, document_obj):
-        """"""
-        # type: (DocumentObject)->bool
-        raise NotImplementedError()
-
 
 class Sqlite3Handler(DbHandler):
     """Class object of backend DB handler in this package. The class uses sqlite3.
@@ -50,14 +30,14 @@ class Sqlite3Handler(DbHandler):
                  sleep_time=TIME_SLEEP,
                  n_retry=N_RETRY,
                  connection_timeout=30000):
+        # type: (str,str,bool,int,int,int)->None
         """* Parameters
         - is_close_connection_end
             - If True, it deleted DB when a process is done. False; don't.
         - sleep_time: time(seconds) to wait when it has database lock error from sqlite3
         - n_retry: times to try and wait for database lock from sqlite3
-        - connection_timeout: timeout time until a connection will be closed. 
+        - connection_timeout: timeout time until a connection will be closed.
         """
-        # type: (str,str,bool,int,int)->None
         self.table_name_text = table_name_text
         self.is_close_connection_end = is_close_connection_end
         self.path_sqlite_file = path_sqlite_file
@@ -77,8 +57,8 @@ class Sqlite3Handler(DbHandler):
             self.db_connection.close()
 
     def create_db(self):
-        """"""
         # type: () -> None
+        """"""
         cur = self.db_connection.cursor()
         sql = """create table if not exists {table_name} (
         record_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -96,10 +76,9 @@ class Sqlite3Handler(DbHandler):
         cur.close()
 
     def insert_record(self, document_obj):
-        """* What you can do
-        - You initialize record for input
-        """
         # type: (DocumentObject) -> bool
+        """You initialize record for input
+        """
         sql_check = "SELECT count(record_id) FROM {} WHERE record_id = ?".format(self.table_name_text)
         cur = self.db_connection.cursor()
         cur.execute(sql_check, (document_obj.record_id,))
@@ -129,11 +108,48 @@ class Sqlite3Handler(DbHandler):
                 logger.error(traceback.format_exc())
                 raise Exception(e)
 
+    def insert_multiple(self, seq_document_obj):
+        # type: (List[DocumentObject])->bool
+        cur = self.db_connection.cursor()
+        sql_insert = """INSERT INTO {}(
+        record_id, 
+        text, 
+        parsed_result, 
+        status, 
+        is_success, 
+        sub_id, 
+        sentence_index, 
+        created_at, 
+        updated_at, 
+        document_args)
+        values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""".format(self.table_name_text)
+        cur = self.db_connection.cursor()
+
+        records = [(
+            d.record_id,
+            d.text,
+            d.parsed_result,
+            d.status,
+            d.is_success,
+            d.sub_id,
+            d.sentence_index,
+            d.timestamp,
+            d.updated_at,
+            None if d.document_args is None else json.dumps(d.document_args, ensure_ascii=False)
+        ) for d in seq_document_obj]
+        try:
+            cur.executemany(sql_insert, records)
+        except Exception as e:
+            self.db_connection.rollback()
+            logger.error(traceback.format_exc())
+            raise Exception(e)
+
+        return True
+
     def update_record(self, document_obj):
-        """* What you can do
-        - It updates some columns after KNP parsing process.
-        """
         # type: (DocumentObject)->bool
+        """It updates some columns after KNP parsing process.
+        """
 
         sql_update = "UPDATE {} SET status=?, is_success=?, parsed_result=? WHERE record_id = ?".format(self.table_name_text)
         is_success = False
@@ -166,8 +182,8 @@ class Sqlite3Handler(DbHandler):
         return True
 
     def get_one_record(self, record_id):
-        """"""
         # type: (int)->Union[bool,DocumentObject]
+        """"""
         sql_ = "SELECT record_id, text, parsed_result, status, is_success, sub_id, sentence_index, created_at, updated_at FROM {} WHERE record_id = ?".format(self.table_name_text)
 
         is_success = False
@@ -204,8 +220,8 @@ class Sqlite3Handler(DbHandler):
             updated_at=fetched_record[8])
 
     def get_one_record_sub_id(self, sub_id):
-        """"""
         # type: (int)->DocumentObject
+        """"""
         sql_ = """SELECT record_id, text, parsed_result, status, is_success, sub_id, sentence_index, created_at, updated_at
         FROM {} WHERE sub_id = ?""".format(self.table_name_text)
 
@@ -245,8 +261,8 @@ class Sqlite3Handler(DbHandler):
                 updated_at=fetched_record[8])
 
     def get_record(self, is_use_generator=False):
+        # type: (bool)->Union[Iterable[DocumentObject], List[DocumentObject]]
         """"""
-        # type: (bool)->Union[Iterable[DocumentObject]], List[DocumentObject]
         sql_ = """SELECT record_id, text, parsed_result, status, is_success, sub_id, sentence_index, created_at, updated_at, document_args
         FROM {}""".format(self.table_name_text)
 

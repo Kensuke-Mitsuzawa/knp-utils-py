@@ -1,7 +1,7 @@
 #! -*- coding: utf-8 -*-
 from knp_utils.models import KnpSubProcess, DocumentObject
 # else
-from typing import List, Tuple, Dict, Any, Callable
+from typing import List, Tuple, Dict, Any, Callable, Iterator
 import re
 import jaconv
 import six
@@ -10,10 +10,10 @@ from six import text_type, PY2, PY3
 
 
 def func_normalize_text(text):
+    # type: (str)->str
     """* What you can do
     - It make normalize input text into text which is suitable to KNP analysis.
     """
-    # type: (str)->str
     if six.PY2:
         if isinstance(text, str):
             text = text.decode('utf-8')
@@ -23,10 +23,10 @@ def func_normalize_text(text):
 
 
 def __check_dict_document(dict_object):
+    # type: (Dict[str,List[str]])->bool
     """* What you can do
     - It checks if document is correct or Not
     """
-    # type: (Dict[str,List[str]])->bool
     if not "text" in dict_object:
         raise Exception("Your input does not have key = 'text'")
     if not "text-id" in dict_object:
@@ -71,12 +71,12 @@ def __split_sentence_py3(text):
 
 
 def split_sentence(text):
+    # type: (str)->List[Tuple[int,str]]
     """* What you can do
     - 文分割を実施する
     * Output
     - (文番号,分割済みテキスト)のタプル
     """
-    # type: (str)->List[Tuple[int,str]]
     if PY3:
         return __split_sentence_py3(text)
     elif PY2:
@@ -91,11 +91,11 @@ def split_sentence(text):
 
 def generate_record_data_model_obj(seq_input_obj,
                                    is_split_sentence):
+    # type: (List[Dict[str,Any]], bool)->List[DocumentObject]
     """* What you can do
     - 入力データをオブジェクト化してしまう。
     - 文単位管理の可能性があるので、不満用とオブジェクトと同じものを使う
     """
-    # type: (List[Dict[str,Any]], bool)->List[DocumentObject]
     seq_record_data_model = []
     record_id = 0
     for dict_document in seq_input_obj:
@@ -115,7 +115,8 @@ def generate_record_data_model_obj(seq_input_obj,
                     sentence_index=sentence_index,
                     document_args=args
                 )
-                seq_record_data_model.append(record_data_model)
+                #seq_record_data_model.append(record_data_model)
+                yield record_data_model
                 record_id += 1
         else:
             """文分割は実施しない"""
@@ -129,16 +130,15 @@ def generate_record_data_model_obj(seq_input_obj,
                 document_args=args
             )
 
-            seq_record_data_model.append(record_data_model)
+            #seq_record_data_model.append(record_data_model)
+            yield record_data_model
             record_id += 1
         # ===========================================================================================================
-    return seq_record_data_model
+    #return seq_record_data_model
 
 
 def generate_document_objects(seq_input_dict_document):
-    """* What you can do
-    """
-    # type: (List[Dict[str,Any]],) -> List[DocumentObject]
+    # type: (List[Dict[str,Any]]) -> List[DocumentObject]
     seq_document_obj = []
     for index_id, dict_document in enumerate(seq_input_dict_document):
         __check_dict_document(dict_document)
@@ -160,11 +160,10 @@ def func_run_parsing(knp_process_handler,
                      input_text,
                      is_normalize_text,
                      func_normalization=func_normalize_text):
-    """* What you can do
-    - It starts parsing-process with KNP.
-    - This function is designed to work in separate. Thus, you're able to call the function from Thread if you like.
-    """
     # type: (KnpSubProcess,text_type,text_type,bool,Callable)->Tuple[text_type,Tuple[bool,text_type]]
+    """It starts parsing-process with KNP.
+    This function is designed to work in separate. Thus, you're able to call the function from Thread if you like.
+    """
     if is_normalize_text:
         text = func_normalization(input_text)
     else:

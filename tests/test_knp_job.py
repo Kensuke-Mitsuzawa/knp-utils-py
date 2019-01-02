@@ -1,7 +1,7 @@
 #! -*- coding: utf-8 -*-
 from knp_utils import knp_job
 from knp_utils.models import  Params
-from knp_utils import db_handler
+from knp_utils.db_handlers import sqlite3_handler as db_handler
 import copy
 import unittest
 import json
