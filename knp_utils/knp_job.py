@@ -109,6 +109,7 @@ def initialize_text_db(seq_document_obj, work_dir=tempfile.mkdtemp(), file_name=
     """
     # type: (List[DocumentObject],str,str)->None
     sqlite3_db_handler = Sqlite3Handler(path_sqlite_file=os.path.join(work_dir, file_name))
+    assert len(seq_document_obj) > 0
     [
         sqlite3_db_handler.insert_record(document_obj)
         for document_obj in seq_document_obj
@@ -134,30 +135,28 @@ def main(seq_input_dict_document,
          timeout_seconds=60,
          func_normalization=func_normalize_text):
     """*What you can do
-    -
-    * Args
-    - seq_input_dict_document
-        - List of input document
-        >>> [{"input-id": "input-1", "text": "これは入力テキストです。"}]
-    - work_dir
-        - path into directory where working-db is saved
-    - file_name
-        - file name of working sqlite3-db file
-    - knp_command
-        - Path to KNP
-    - juman_command
-        - Path to Juman. You can set path to Juman++ also
-    - path_juman_rc
-        - Path to Jumanrc(config file) if you have
-    - process_mode
-        - A way to manage processes in multi-thread.
-            - "pexpect": Faster. It keep processes running in each thread.
-            - "everytime": Slower. It launches a process when one data comes. 
-    - is_delete_working_db
-        - Boolean flag if you save working sqlite3 db file or Not
-    - is_get_processed_doc
-        - Boolean flag if you get processed document or Not. KNP result string tends to be super big. So, if you put a lot of document, I strongly recomment to put is_get_processed_doc == False.
-         And use Sqlite3Handler(path_sqlite_file=path_working_db).get_record(is_use_generator=True).
+
+    :param seq_input_dict_document: List of input document. "text-id" and "text" is mandatory field.
+    You cloud put any information in "args" field. The dict object in "args" field must be possible to jsonize.
+    >>> [{"text-id": "input-1", "text": "これは入力テキストです。", "args": {"date": "2018/12/12"}}]
+    :param work_dir: path into directory where working-db is saved
+    :param file_name: file name of working sqlite3-db file
+    :param knp_command: Path to KNP
+    :param juman_command: Path to Juman. You can set path to Juman++ also
+    :param path_juman_rc: Path to Jumanrc(config file) if you have
+    :param knp_options:
+    :param juman_options:
+    :param process_mode: A way to manage processes in multi-thread.
+    "pexpect": Faster. It keep processes running in each thread.
+    "everytime": Slower. It launches a process when one data comes.
+    :param is_delete_working_db: Boolean flag if you save working sqlite3 db file or Not
+    :param is_get_processed_doc: Boolean flag if you get processed document or Not.
+    KNP result string tends to be super big. So, if you put a lot of document, I strongly recomment to put is_get_processed_doc == False.
+    And use Sqlite3Handler(path_sqlite_file=path_working_db).get_record(is_use_generator=True).
+    :param is_normalize_text:
+    :param is_split_text:
+    :param timeout_seconds:
+    :param func_normalization:
     """
     # type: (List[Dict[str,Any]],int,text_type,text_type,text_type,text_type,text_type,text_type,text_type,text_type,bool,bool,bool,bool,int,Callable[[text_type],text_type])->ResultObject
     if is_delete_working_db and is_get_processed_doc == False:

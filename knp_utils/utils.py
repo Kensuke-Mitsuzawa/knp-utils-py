@@ -91,23 +91,29 @@ def generate_record_data_model_obj(seq_input_obj,
             """文分割の実施"""
             for tuple_sentid_text in split_sentence(dict_document['text']):
                 sentence, sentence_index = tuple_sentid_text[1], tuple_sentid_text[0]
+                args = dict_document['args'] if 'args' in dict_document else None
                 record_data_model = DocumentObject(
                     record_id=record_id,
                     text=sentence,
                     status=False,
                     parsed_result=None,
                     sub_id=dict_document['text-id'],
-                    sentence_index=sentence_index)
+                    sentence_index=sentence_index,
+                    document_args=args
+                )
                 seq_record_data_model.append(record_data_model)
                 record_id += 1
         else:
             """文分割は実施しない"""
+            args = dict_document['args'] if 'args' in dict_document else None
             record_data_model = DocumentObject(
-            record_id=record_id,
-            text=dict_document['text'],
-            status=False,
-            parsed_result=None,
-            sub_id=dict_document['text-id'])
+                record_id=record_id,
+                text=dict_document['text'],
+                status=False,
+                parsed_result=None,
+                sub_id=dict_document['text-id'],
+                document_args=args
+            )
 
             seq_record_data_model.append(record_data_model)
             record_id += 1
@@ -122,14 +128,15 @@ def generate_document_objects(seq_input_dict_document):
     seq_document_obj = []
     for index_id, dict_document in enumerate(seq_input_dict_document):
         __check_dict_document(dict_document)
-
+        args = dict_document['args'] if 'args' in dict_document else None
         seq_document_obj.append(DocumentObject(
             record_id=index_id,
             sentence_index=0,
             text=dict_document['text'],
             status=False,
             parsed_result=None,
-            sub_id=dict_document['text-id']
+            sub_id=dict_document['text-id'],
+            document_args=args
         ))
     return seq_document_obj
 

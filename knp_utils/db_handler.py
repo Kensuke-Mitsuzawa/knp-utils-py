@@ -5,6 +5,7 @@ from knp_utils.models import DocumentObject
 # typing
 from typing import List, Tuple, Dict, Union, Iterable, Any
 # else
+import json
 import os
 import traceback
 import sqlite3
@@ -88,7 +89,8 @@ class Sqlite3Handler(DbHandler):
         sub_id TEXT,
         sentence_index  INTEGER,
         created_at DATETIME,
-        updated_at DATETIME)"""
+        updated_at DATETIME,
+        document_args TEXT)"""
         cur.execute(sql.format(table_name=self.table_name_text))
         self.db_connection.commit()
         cur.close()
@@ -105,10 +107,11 @@ class Sqlite3Handler(DbHandler):
             cur.close()
             return False
         else:
-            sql_insert = """INSERT INTO {}(record_id, text, parsed_result, status, is_success, sub_id, sentence_index, created_at, updated_at)
-            values (?, ?, ?, ?, ?, ?, ?, ?, ?)""".format(self.table_name_text)
+            sql_insert = """INSERT INTO {}(record_id, text, parsed_result, status, is_success, sub_id, sentence_index, created_at, updated_at, document_args)
+            values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""".format(self.table_name_text)
             cur = self.db_connection.cursor()
             try:
+                doc_args = None if document_obj.document_args is None else json.dumps(document_obj.document_args, ensure_ascii=False)
                 cur.execute(sql_insert, (document_obj.record_id,
                                          document_obj.text,
                                          document_obj.parsed_result,
@@ -117,13 +120,14 @@ class Sqlite3Handler(DbHandler):
                                          document_obj.sub_id,
                                          document_obj.sentence_index,
                                          document_obj.timestamp,
-                                         document_obj.updated_at))
+                                         document_obj.updated_at,
+                                         doc_args))
                 self.db_connection.commit()
                 cur.close()
-            except:
-                logger.error(traceback.format_exc())
+            except Exception as e:
                 self.db_connection.rollback()
-                return False
+                logger.error(traceback.format_exc())
+                raise Exception(e)
 
     def update_record(self, document_obj):
         """* What you can do
@@ -243,7 +247,7 @@ class Sqlite3Handler(DbHandler):
     def get_record(self, is_use_generator=False):
         """"""
         # type: (bool)->Union[Iterable[DocumentObject]], List[DocumentObject]
-        sql_ = """SELECT record_id, text, parsed_result, status, is_success, sub_id, sentence_index, created_at, updated_at
+        sql_ = """SELECT record_id, text, parsed_result, status, is_success, sub_id, sentence_index, created_at, updated_at, document_args
         FROM {}""".format(self.table_name_text)
 
         cur = self.db_connection.cursor()
@@ -260,7 +264,8 @@ class Sqlite3Handler(DbHandler):
                     sub_id=record_tuple[5],
                     sentence_index=record_tuple[6],
                     timestamp=record_tuple[7],
-                    updated_at=record_tuple[8]
+                    updated_at=record_tuple[8],
+                    document_args=None if record_tuple[9] is None else json.loads(record_tuple[9])
                 ) for record_tuple in cur)
         else:
             if six.PY2:
@@ -276,7 +281,8 @@ class Sqlite3Handler(DbHandler):
                     sub_id=record_tuple[5],
                     sentence_index=record_tuple[6],
                     timestamp=record_tuple[7],
-                    updated_at=record_tuple[8]
+                    updated_at=record_tuple[8],
+                    document_args=None if record_tuple[9] is None else json.loads(record_tuple[9])
                 ) for record_tuple in cur]
 
         return seq_urls

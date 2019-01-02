@@ -4,7 +4,7 @@ MAINTAINER kensuke-mi <kensuke.mit@gmail.com>
 # Juman/Juman++
 ENV JUMANPP_URL https://github.com/ku-nlp/jumanpp/releases/download/v2.0.0-rc2/jumanpp-2.0.0-rc2.tar.xz
 ENV JUMAN_SOURCE_URL http://nlp.ist.i.kyoto-u.ac.jp/nl-resource/juman/juman-7.01.tar.bz2
-ENV KNP_SOURCE_URL http://nlp.ist.i.kyoto-u.ac.jp/nl-resource/knp/knp-4.17.tar.bz2
+ENV KNP_SOURCE_URL http://nlp.ist.i.kyoto-u.ac.jp/nl-resource/knp/knp-4.19.tar.bz2
 
 ENV PATH=/opt/conda/bin:$PATH \
     LANG=C.UTF-8 \
@@ -19,18 +19,22 @@ RUN apk add --no-cache bash wget && \
     ln -s /opt/conda/bin/* /usr/local/bin/ && \
     rm -rf /root/.[acpw]* /$MINICONDA /opt/conda/pkgs/*
 # general
-RUN apk --no-cache add vim wget lsof curl bash swig gcc build-base make python-dev py-pip jpeg-dev zlib-dev
+RUN apk --no-cache add vim \
+wget \
+lsof \
+curl \
+bash \
+swig \
+gcc \
+build-base \
+make \
+cmake \
+jpeg-dev \
+zlib-dev \
+boost-dev \
+linux-headers \
+libexecinfo-dev
 ENV LIBRARY_PATH=/lib:/usr/lib
-# DB系システム
-RUN apk --no-cache add sqlite
-RUN apk --update add postgresql openssl && \
-rm -f /var/cache/apk/* &&  \
-wget --no-check-certificate  -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/1.4/gosu-amd64" &&  \
-chmod +x /usr/local/bin/gosu &&  \
-echo "Success"
-
-# boost
-RUN apk --no-cache add boost-dev
 
 # directory
 WORKDIR /tmp
@@ -64,9 +68,9 @@ WORKDIR /tmp
 ### -------------------------------------------------------------------------------------------
 ### 一般公開向けKNP-4.16を利用する場合は下のコード
 RUN wget ${KNP_SOURCE_URL}
-RUN tar xfj knp-4.17.tar.bz2
-RUN cd knp-4.17 && ./configure && make && make install
-RUN cd ../ && rm -rf knp-4.17
+RUN tar xfj knp-4.19.tar.bz2
+RUN cd knp-4.19 && ./configure && make && make install
+RUN cd ../ && rm -rf knp-4.19
 RUN echo "私はさくらまなの作品が好きです。" | jumanpp | knp
 
 
@@ -74,9 +78,6 @@ RUN echo "私はさくらまなの作品が好きです。" | jumanpp | knp
 ### Install python packages
 WORKDIR /opt
 ## Pythonパッケージのインストール
-### コード配置用のディレクトリ
-RUN mkdir /codes
-ADD . /codes/knp-utils
 
 RUN conda config --add channels conda-forge --system
 RUN conda create -y -n p27 python=2.7

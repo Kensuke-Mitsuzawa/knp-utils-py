@@ -2,6 +2,7 @@
 from knp_utils import knp_job
 from knp_utils.models import  Params
 from knp_utils import db_handler
+import codecs
 import unittest
 import json
 import os
@@ -143,6 +144,22 @@ class TestCore(unittest.TestCase):
         with self.assertRaises(Exception):
             knp_job.main(seq_input_dict_document=seq_input,is_normalize_text=True,n_jobs=-1,knp_options='-KK')
 
+    def test_input_document_with_args(self):
+        """入力documentにargsが付属しているときの挙動をテスト"""
+        seq_input_docs = json.loads(codecs.open(self.path_input_documents, 'r', 'utf-8').read())
+        for doc in seq_input_docs:
+            doc.update({"args": {"date": "2018/12/12"}})
+
+        result_docs = knp_job.main(
+            seq_input_dict_document=seq_input_docs,
+            n_jobs=-1,
+            is_normalize_text=True,
+            is_split_text=True
+        )
+        for doc_obj in result_docs.seq_document_obj:
+            assert doc_obj.document_args is not None
+            assert isinstance(doc_obj.document_args, dict)
+            assert "date" in doc_obj.document_args and doc_obj.document_args["date"] == "2018/12/12"
 
 
 if __name__ == '__main__':
