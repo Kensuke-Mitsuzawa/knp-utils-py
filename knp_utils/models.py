@@ -6,15 +6,14 @@ from datetime import datetime
 import subprocess
 import traceback
 import six
-import socket
 import re
 import shutil
 import pexpect
 import os
 import sys
-from typing import List, Dict, Any, Union, Tuple, Optional
+from typing import List, Dict, Any, Tuple, Optional
 from six import text_type
-import time
+import zlib
 # errors
 from knp_utils.errors import ParserIntializeError
 
@@ -568,7 +567,8 @@ Params = KnpSubProcess
 
 class DocumentObject(object):
     __slots__ = ('record_id', 'status', 'text',
-                 'is_success', 'timestamp', 'updated_at', 'sub_id', 'sentence_index', 'parsed_result', 'document_args')
+                 'is_success', 'timestamp', 'updated_at',
+                 'sub_id', 'sentence_index', 'parsed_result', 'document_args', 'is_compress')
 
     def __init__(self,
                  record_id,
@@ -580,9 +580,8 @@ class DocumentObject(object):
                  sentence_index=None,
                  timestamp=datetime.now(),
                  updated_at=datetime.now(),
-                 document_args=None
-                 ):
-        # type: (int,text_type,bool,Union[None,str],bool,str,int,datetime,datetime,Dict[str, Any]) -> None
+                 document_args=None):
+        # type: (int,text_type,bool,Optional[text_type],bool,str,int,datetime,datetime,Dict[str, Any]) -> None
         """
 
         :param record_id: unique id in backend DB
@@ -597,7 +596,13 @@ class DocumentObject(object):
         :param updated_at:
         :param document_args: dict object which is attribute information for input document.
         """
-
+        self.record_id = record_id
+        self.status = status
+        self.timestamp = timestamp
+        self.updated_at = updated_at
+        self.is_success = is_success
+        self.sentence_index = sentence_index
+        self.document_args = document_args
         if six.PY2:
             try:
                 if isinstance(text, str):
@@ -627,20 +632,12 @@ class DocumentObject(object):
             self.sub_id = sub_id
             self.parsed_result = parsed_result
 
-        self.record_id = record_id
-        self.status = status
-        self.timestamp = timestamp
-        self.updated_at = updated_at
-        self.is_success = is_success
-        self.sentence_index = sentence_index
-        self.document_args = document_args
-
     def set_knp_parsed_result(self, t_parsed_result):
         # type: (Tuple[bool,text_type])->None
         """* What you can do
         - It sets KNP parsed result
         """
-        if t_parsed_result[0]==False:
+        if t_parsed_result[0] is False:
             # If it has something system error, tuple[0] is False #
             is_success_flag = False
         else:
@@ -650,7 +647,8 @@ class DocumentObject(object):
         self.is_success = is_success_flag
         self.parsed_result = t_parsed_result[1]
 
-    def __check_knp_result(self, parsed_result):
+    @staticmethod
+    def __check_knp_result(parsed_result):
         # type: (text_type)->bool
         """* What you can do
         - It checks if knp result is error or not

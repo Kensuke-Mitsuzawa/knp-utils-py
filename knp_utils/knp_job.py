@@ -6,7 +6,7 @@ from knp_utils.models import KnpSubProcess, DocumentObject, ResultObject
 from knp_utils.utils import func_normalize_text, generate_record_data_model_obj, generate_document_objects
 from knp_utils.logger_unit import logger
 # else
-from typing import List, Tuple, Dict, Any, Callable
+from typing import List, Tuple, Dict, Any, Callable, Iterator
 from more_itertools import chunked
 from six import text_type
 import joblib
@@ -117,9 +117,8 @@ def initialize_text_db(seq_document_obj,
                        work_dir=tempfile.mkdtemp(),
                        file_name=str(uuid.uuid4()),
                        backend='sqlite3',
-                       batch_size=1000):
-    # type: (List[DocumentObject], str, str, str, int)->bool
-    assert len(seq_document_obj) > 0
+                       batch_size=5000):
+    # type: (Iterator[DocumentObject], str, str, str, int)->bool
     logger.info('Inserting records into backend db...')
     if backend == 'sqlite3':
         sqlite3_db_handler = Sqlite3Handler(path_sqlite_file=os.path.join(work_dir, file_name))
@@ -179,18 +178,17 @@ def main(seq_input_dict_document,
     :param is_split_text:
     :param timeout_seconds:
     :param func_normalization:
-    :param backend: DB backend. 'sqlite3'
     """
     if is_delete_working_db and is_get_processed_doc is False:
         raise Exception('Nothing is return object when is_delete_working_db = True and is_get_processed_doc = False')
 
     path_working_db = os.path.join(work_dir, file_name)
     if is_split_text:
-        seq_doc_obj = generate_record_data_model_obj(seq_input_dict_document, is_split_sentence=True)
+        iter_doc_obj = generate_record_data_model_obj(seq_input_dict_document, is_split_sentence=True)
     else:
-        seq_doc_obj = generate_document_objects(seq_input_dict_document)
+        iter_doc_obj = generate_document_objects(seq_input_dict_document)
 
-    initialize_text_db(seq_document_obj=seq_doc_obj, work_dir=work_dir, file_name=file_name, backend=backend)
+    initialize_text_db(seq_document_obj=iter_doc_obj, work_dir=work_dir, file_name=file_name)
 
     # Run KNP analysis in parallel #
     parse_texts(path_db_handler=path_working_db,
@@ -207,10 +205,7 @@ def main(seq_input_dict_document,
 
     if is_get_processed_doc:
         logger.info('Loading processed documents from backend DB...')
-        if backend == 'sqlite3':
-            seq_processed_doc_obj = Sqlite3Handler(path_sqlite_file=path_working_db).get_record()
-        else:
-            raise Exception()
+        seq_processed_doc_obj = Sqlite3Handler(path_sqlite_file=path_working_db).get_record()
         logger.info('Loading end!')
     else:
         seq_processed_doc_obj = []

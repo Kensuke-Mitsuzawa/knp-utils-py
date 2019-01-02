@@ -1,6 +1,5 @@
 #! -*- coding: utf-8 -*-
 from knp_utils import knp_job
-from knp_utils.models import  Params
 from knp_utils.db_handlers import sqlite3_handler as db_handler
 import copy
 import unittest
@@ -8,6 +7,8 @@ import json
 import os
 import shutil
 import six
+from uuid import uuid4
+
 
 class TestCore(unittest.TestCase):
     @classmethod
@@ -16,7 +17,6 @@ class TestCore(unittest.TestCase):
 
         cls.db_file_name = 'model_database.sqlite3'
         if 'tests' in os.getcwd():
-            print(os.path.dirname(__file__))
             cls.path_input_documents = './resources/input_sample.json'
             cls.path_work_dir = './resources'
         else:
@@ -56,35 +56,35 @@ class TestCore(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        # procedures after tests are finished. This code block is executed only once
-        if os.path.exists(os.path.join(cls.path_work_dir, cls.db_file_name)):
-            os.remove(os.path.join(cls.path_work_dir, cls.db_file_name))
+        pass
 
     def setUp(self):
         # procedures before every tests are started. This code block is executed every time
         pass
 
     def tearDown(self):
-        # procedures after every tests are finished. This code block is executed every time
-        pass
+        # procedures after tests are finished. This code block is executed only once
+        if os.path.exists(os.path.join(self.path_work_dir, self.db_file_name)):
+            os.remove(os.path.join(self.path_work_dir, self.db_file_name))
 
     def test_initialize_text_db(self):
         """作業用DBを初期化する"""
         knp_job.initialize_text_db(knp_job.generate_document_objects(self.seq_docs),
-                                   work_dir=self.path_work_dir, file_name=self.db_file_name)
+                                   work_dir=self.path_work_dir,
+                                   file_name=self.db_file_name)
 
     def test_parse_one_sentence(self):
         """"""
         self.test_initialize_text_db()
         handler = db_handler.Sqlite3Handler(os.path.join(self.path_work_dir, self.db_file_name))
         knp_job.parse_text_block(seq_record_id=[4],
-                                 path_sqlite3_db_handler=os.path.join(self.path_work_dir, self.db_file_name),
+                                 path_db_handler=os.path.join(self.path_work_dir, self.db_file_name),
                                  knp_command=self.path_juman,
                                  juman_command=self.path_juman)
 
     def test_parse_texts(self):
         self.test_initialize_text_db()
-        knp_job.parse_texts(path_sqlite3_db_handler=os.path.join(self.path_work_dir, self.db_file_name),
+        knp_job.parse_texts(path_db_handler=os.path.join(self.path_work_dir, self.db_file_name),
                             n_jobs=2,
                             knp_command=self.path_knp,
                             juman_command=self.path_juman)

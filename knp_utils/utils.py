@@ -91,7 +91,7 @@ def split_sentence(text):
 
 def generate_record_data_model_obj(seq_input_obj,
                                    is_split_sentence):
-    # type: (List[Dict[str,Any]], bool)->List[DocumentObject]
+    # type: (List[Dict[str,Any]], bool)->Iterator[DocumentObject]
     """* What you can do
     - 入力データをオブジェクト化してしまう。
     - 文単位管理の可能性があるので、不満用とオブジェクトと同じものを使う
@@ -138,21 +138,19 @@ def generate_record_data_model_obj(seq_input_obj,
 
 
 def generate_document_objects(seq_input_dict_document):
-    # type: (List[Dict[str,Any]]) -> List[DocumentObject]
-    seq_document_obj = []
+    # type: (List[Dict[str,Any]]) -> Iterator[DocumentObject]
     for index_id, dict_document in enumerate(seq_input_dict_document):
         __check_dict_document(dict_document)
         args = dict_document['args'] if 'args' in dict_document else None
-        seq_document_obj.append(DocumentObject(
+        _d = DocumentObject(
             record_id=index_id,
             sentence_index=0,
             text=dict_document['text'],
             status=False,
             parsed_result=None,
             sub_id=dict_document['text-id'],
-            document_args=args
-        ))
-    return seq_document_obj
+            document_args=args)
+        yield _d
 
 
 def func_run_parsing(knp_process_handler,
