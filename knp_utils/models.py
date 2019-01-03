@@ -6,15 +6,14 @@ from datetime import datetime
 import subprocess
 import traceback
 import six
-import socket
 import re
 import shutil
 import pexpect
 import os
 import sys
-from typing import List, Dict, Any, Union, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 from six import text_type
-import time
+import zlib
 # errors
 from knp_utils.errors import ParserIntializeError
 
@@ -22,44 +21,6 @@ from knp_utils.errors import ParserIntializeError
 if six.PY2:
     ConnectionRefusedError = Exception
     TimeoutError = Exception
-
-
-# todo これは不要だから消すかも
-class JumanppClient(object):
-    """Class for receiving data as client"""
-    def __init__(self, hostname, port, timeout=50, option=None):
-        """"""
-        # type:(str,int,int,None)->None
-        if isinstance(port, str):
-            port = int(port)
-
-        try:
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.sock.connect((hostname, port))
-        except ConnectionRefusedError:
-            raise Exception("There is no jumanpp server hostname={}, port={}".format(hostname, port))
-        except:
-            raise
-        if option is not None:
-            self.sock.send(option)
-        data = b""
-        self.sock.settimeout(timeout)
-
-    def __del__(self):
-        if self.sock:
-            self.sock.close()
-
-    def query(self, sentence, pattern):
-        # type: (str, bytes) -> str
-        assert (isinstance(sentence, six.text_type))
-        self.sock.sendall(b"%s\n" % sentence.encode('utf-8').strip())
-        data = self.sock.recv(1024)
-        assert isinstance(data, bytes)
-        recv = data
-        while not re.search(pattern, recv):
-            data = self.sock.recv(1024)
-            recv = b"%s%s" % (recv, data)
-        return recv.strip().decode('utf-8')
 
 
 class UnixProcessHandler(object):
@@ -70,7 +31,6 @@ class UnixProcessHandler(object):
                  option=None,
                  pattern='EOS',
                  timeout_second=10):
-        """"""
         # type: (text_type,text_type,text_type,int)->None
         self.unix_command = unix_command
         self.timeout_second = timeout_second
@@ -83,10 +43,10 @@ class UnixProcessHandler(object):
             self.process_analyzer.kill(sig=9)
 
     def launch_process(self, command):
+        # type: (text_type)->None
         """* What you can do
         - It starts jumanpp process and keep it.
         """
-        # type: (text_type)->None
         if not self.option is None:
             command_plus_option = self.unix_command + " " + self.option
         else:
@@ -108,8 +68,8 @@ class UnixProcessHandler(object):
                 self.process_id = self.process_analyzer.pid
 
     def restart_process(self):
-        """"""
         # type: ()->None
+        """"""
         if not self.option is None:
             command_plus_option = self.unix_command + " " + self.option
         else:
@@ -120,10 +80,10 @@ class UnixProcessHandler(object):
         self.process_id = self.process_analyzer.pid
 
     def stop_process(self):
+        # type: ()->bool
         """* What you can do
         - You're able to stop the process which this instance has now.
         """
-        # type: ()->bool
         if hasattr(self, "process_analyzer"):
             self.process_analyzer.kill(sig=9)
         else:
@@ -132,11 +92,11 @@ class UnixProcessHandler(object):
         return True
 
     def __query(self, input_string):
+        # type: (text_type)->text_type
         """* What you can do
         - It takes the result of Juman++
         - This function monitors time which takes for getting the result.
         """
-        # type: (text_type)->text_type
         input_encoded = input_string
         self.process_analyzer.sendline(input_encoded)
         buffer = ""
@@ -157,9 +117,9 @@ class UnixProcessHandler(object):
         2. Run restart_process() method when the exception happens.""".format(**{"time": self.timeout_second}))
 
     def query(self, input_string):
+        # type: (text_type)->text_type
         """* What you can do
         """
-        # type: (text_type)->text_type
         try:
             return self.__query(input_string=input_string)
         except UnicodeDecodeError:
@@ -170,7 +130,6 @@ class UnixProcessHandler(object):
 class SubprocessHandler(object):
     """A old fashion way to keep connection into UNIX process"""
     def __init__(self, command, timeout_second=None):
-        """"""
         # type: (text_type,int)->None
         subproc_args = {'stdin': subprocess.PIPE, 'stdout': subprocess.PIPE,
                         'stderr': subprocess.STDOUT, 'cwd': '.',
@@ -262,6 +221,7 @@ class KnpSubProcess(object):
                  path_juman_rc=None,
                  eos_pattern="EOS",
                  timeout_second=60):
+        # type: (str,str,str,str,str,int,str,int,bool,str,str,str,int)->None
         """* Parameters
         - knp_command: Path into Bin of KNP
         - juman_command: Path into Bin of Juman(or Juman++)
@@ -275,7 +235,6 @@ class KnpSubProcess(object):
         - process_mode: Way to call UNIX commands. 1; You call UNIX commands everytime. 2; You keep UNIX commands running.
         - path_juman_rc: Path into Jumanrc file.
         """
-        # type: (str,str,str,str,str,int,str,int,bool,str,str,str,int)->None
         PROCESS_MODE = ('everytime', 'pexpect', 'subprocess')
 
         self.knp_command = knp_command
@@ -332,10 +291,10 @@ class KnpSubProcess(object):
             raise Exception("It failed to initialize. Check your configurations.")
 
     def __launch_subprocess_model(self):
+        # type: ()->None
         """* What you can do
         - It defines process with subprocess handler
         """
-        # type: (bool)->None
         self.validate_arguments()
         if self.juman_options is None:
             self.juman = SubprocessHandler(command='{}'.format(self.juman_command), timeout_second=self.timeout_second)
@@ -347,15 +306,14 @@ class KnpSubProcess(object):
         else:
             self.knp = SubprocessHandler(command='{} {}'.format(self.knp_command, self.knp_options), timeout_second=self.timeout_second)
 
-
     def __launch_pexpect_mode(self, is_keep_process=True):
+        # type: (bool)->None
         """* What you can do
         - It defines process with pexpect
         - For KNP
             - with keep process running (experimental)
             - with launching KNP command every time
         """
-        # type: (bool)->None
         self.validate_arguments()
         # set juman/juman++ unix process #
         if self.is_use_jumanpp:
@@ -460,8 +418,6 @@ class KnpSubProcess(object):
                     raise Exception("Invalid options: {} {}".format(self.knp_command, self.knp_options))
 
     def __run_subprocess_mode(self, input_string):
-        """* What you can do
-        """
         # type: (text_type)->Tuple[bool,text_type]
         assert isinstance(self.juman, SubprocessHandler)
         assert isinstance(self.knp, SubprocessHandler)
@@ -484,13 +440,13 @@ class KnpSubProcess(object):
             return (False, 'error traceback={}'.format(traceback_message))
 
     def __run_pexpect_mode(self, input_string):
+        # type: (text_type)->Tuple[bool,text_type]
         """* What you can do
         - It calls Juman in UNIX process.
         - It calls KNP
             - with keep process running
             - with launching KNP command everytime
         """
-        # type: (text_type)->Tuple[bool,text_type]
         assert isinstance(self.juman, UnixProcessHandler)
         try:
             juman_result = self.juman.query(input_string=input_string)
@@ -529,7 +485,6 @@ class KnpSubProcess(object):
                 return (False, 'error traceback={}'.format(traceback_message))
 
     def __run_everytime_mode(self, input_string):
-        """"""
         # type: (text_type)->Tuple[bool,text_type]
         assert isinstance(self.juman, list)
         assert isinstance(self.knp, list)
@@ -558,9 +513,7 @@ class KnpSubProcess(object):
             logger.error("Error with command={}".format(traceback.format_exc()))
             return (False, 'error traceback={}'.format(traceback_message))
 
-
     def __run_server_model(self, input_string):
-        """"""
         # type: (text_type)->Tuple[bool,text_type]
         assert isinstance(self.juman, list)
         assert isinstance(self.knp, list)
@@ -590,11 +543,11 @@ class KnpSubProcess(object):
             return (False, 'error traceback={}'.format(traceback_message))
 
     def run_command(self, text):
+        # type: (text_type)->Tuple[bool,text_type]
         """* What you can do
         - You run analysis of Juman(Juman++) and KNP.
         - You have 2 ways to call commands. 
         """
-        # type: (text_type,)->Tuple[bool,text_type]
         if (not self.juman_server_host is None and not self.juman_server_port is None) and (not self.knp_server_host is None and self.knp_server_port is None):
             return self.__run_server_model(text)
         elif self.process_mode == 'pexpect':
@@ -614,7 +567,8 @@ Params = KnpSubProcess
 
 class DocumentObject(object):
     __slots__ = ('record_id', 'status', 'text',
-                 'is_success', 'timestamp', 'updated_at', 'sub_id', 'sentence_index', 'parsed_result')
+                 'is_success', 'timestamp', 'updated_at',
+                 'sub_id', 'sentence_index', 'parsed_result', 'document_args', 'is_compress')
 
     def __init__(self,
                  record_id,
@@ -624,10 +578,31 @@ class DocumentObject(object):
                  is_success=None,
                  sub_id=None,
                  sentence_index=None,
-                 timestamp = datetime.now(),
-                 updated_at = datetime.now()):
-        # type: (int,text_type,bool,Union[None,str],bool,str,int,datetime,datetime) -> None
+                 timestamp=datetime.now(),
+                 updated_at=datetime.now(),
+                 document_args=None):
+        # type: (int,text_type,bool,Optional[text_type],bool,str,int,datetime,datetime,Dict[str, Any]) -> None
+        """
 
+        :param record_id: unique id in backend DB
+        :param text: input text to be parsed.
+        :param status: boolean flag to describe status of knp parsing.
+        :param parsed_result: parsing result text.
+        :param is_success: boolean flag to describe status of knp parsing.
+        :param sub_id: id in the original given text.
+         This is used when the original input text is too long and the original text is separated.
+        :param sentence_index: sentence index when the original input text is separated.
+        :param timestamp:
+        :param updated_at:
+        :param document_args: dict object which is attribute information for input document.
+        """
+        self.record_id = record_id
+        self.status = status
+        self.timestamp = timestamp
+        self.updated_at = updated_at
+        self.is_success = is_success
+        self.sentence_index = sentence_index
+        self.document_args = document_args
         if six.PY2:
             try:
                 if isinstance(text, str):
@@ -657,19 +632,12 @@ class DocumentObject(object):
             self.sub_id = sub_id
             self.parsed_result = parsed_result
 
-        self.record_id = record_id
-        self.status = status
-        self.timestamp = timestamp
-        self.updated_at = updated_at
-        self.is_success = is_success
-        self.sentence_index = sentence_index
-
     def set_knp_parsed_result(self, t_parsed_result):
+        # type: (Tuple[bool,text_type])->None
         """* What you can do
         - It sets KNP parsed result
         """
-        # type: (Tuple[bool,text_type],)->None
-        if t_parsed_result[0]==False:
+        if t_parsed_result[0] is False:
             # If it has something system error, tuple[0] is False #
             is_success_flag = False
         else:
@@ -679,11 +647,12 @@ class DocumentObject(object):
         self.is_success = is_success_flag
         self.parsed_result = t_parsed_result[1]
 
-    def __check_knp_result(self, parsed_result):
+    @staticmethod
+    def __check_knp_result(parsed_result):
+        # type: (text_type)->bool
         """* What you can do
         - It checks if knp result is error or not
         """
-        # type: (text_type)->bool
         if parsed_result is None:
             return False
         elif 'error' in parsed_result.lower():
@@ -692,10 +661,10 @@ class DocumentObject(object):
             return True
 
     def to_dict(self):
+        # type: ()->Dict[str,Any]
         """* What you can do
         - You see parsed result with dict format
         """
-        # type: ()->Dict[str,Any]
         return {
             "record_id": self.record_id,
             "sub_id": self.sub_id,
@@ -704,7 +673,8 @@ class DocumentObject(object):
             "is_success": self.is_success,
             "parsed_result": self.parsed_result,
             "timestamp": self.timestamp,
-            "update_at": self.updated_at
+            "update_at": self.updated_at,
+            "document_args": self.document_args
         }
 
 
@@ -713,17 +683,16 @@ class ResultObject(object):
                  seq_document_obj,
                  path_working_db,
                  db_handler):
-        """"""
-        # type: (List[DocumentObject],str,Any)->None
+        # type: (List[DocumentObject],Optional[str],Any)->None
         self.seq_document_obj = seq_document_obj
         self.path_working_db = path_working_db
         self.db_handler = db_handler
 
     def to_dict(self):
+        # type: ()->List[Dict[str,Any]]
         """* What you can do
         - You get parsed result with dict format
         """
-        # type: ()->List[Dict[str,Any]]
         return [doc_obj.to_dict() for doc_obj in self.seq_document_obj]
 
 

@@ -49,11 +49,7 @@ def example_interface():
     try:
         import pyknp
     except:
-        import pip
-        try:
-            pip.main(['install', 'http://nlp.ist.i.kyoto-u.ac.jp/DLcounter/lime.cgi?down=http://lotus.kuee.kyoto-u.ac.jp/nl-resource/pyknp/pyknp-0.3.tar.gz&name=pyknp-0.3.tar.gz'])
-        except:
-            logger.error(msg="Failed to install pyknp. Skip this process.")
+        logger.error(msg="Failed to install pyknp. Skip this process.")
     else:
         from pyknp import KNP
         knp_obj = KNP()
@@ -109,11 +105,7 @@ def performance_comparison():
     try:
         import pyknp
     except:
-        import pip
-        try:
-            pip.main(['install', 'http://nlp.ist.i.kyoto-u.ac.jp/DLcounter/lime.cgi?down=http://lotus.kuee.kyoto-u.ac.jp/nl-resource/pyknp/pyknp-0.3.tar.gz&name=pyknp-0.3.tar.gz'])
-        except:
-            logger.error(msg="Failed to install pyknp. Skip this process.")
+        logger.error(msg="Failed to install pyknp. Skip this process.")
     else:
         start = time.time()
         from pyknp import KNP
