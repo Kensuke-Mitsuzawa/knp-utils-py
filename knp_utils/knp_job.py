@@ -129,7 +129,8 @@ def initialize_text_db(seq_document_obj,
                 sqlite3_db_handler.insert_multiple(__batch_stack)
                 __batch_stack = []
         else:
-            sqlite3_db_handler.insert_multiple(__batch_stack)
+            if len(__batch_stack) > 0:
+                sqlite3_db_handler.insert_multiple(__batch_stack)
     else:
         raise Exception('No backend named {}'.format(backend))
     logger.info('Put all records into backend db!')
